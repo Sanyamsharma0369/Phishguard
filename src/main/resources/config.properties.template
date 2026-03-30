@@ -1,0 +1,15 @@
+# Gmail IMAP Settings — fill in your credentials
+email.host=imap.gmail.com
+email.port=993
+email.ssl=true
+email.username=YOUR_EMAIL@gmail.com
+email.password=YOUR_APP_PASSWORD_HERE
+
+# Risk thresholds
+risk.threshold.suspicious=0.4
+risk.threshold.high=0.7
+
+# Email monitoring
+email.poll.interval=30
+email.fetch.count=10
+email.folder=INBOX

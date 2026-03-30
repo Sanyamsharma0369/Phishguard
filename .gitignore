@@ -1,0 +1,30 @@
+# Compiled output
+target/
+*.class
+*.jar
+
+# IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Database files (contain private data)
+*.db
+*.sqlite
+*.sqlite3
+
+# Config with credentials (IMPORTANT - never push this)
+src/main/resources/config.properties
+
+# Weka model files (too large for GitHub)
+*.model
+
+# Python cache
+__pycache__/
+*.pyc
+.env
+
+# OS files
+.DS_Store
+Thumbs.db

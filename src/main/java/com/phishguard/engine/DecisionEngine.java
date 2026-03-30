@@ -1,0 +1,179 @@
+package com.phishguard.engine;
+
+import com.phishguard.utils.ConfigLoader;
+import com.phishguard.utils.Constants;
+
+/**
+ * PhishGuard - DecisionEngine.java
+ * -------------------------------------------------
+ * Applies the final risk classification rules to a populated RiskScorer.
+ *
+ * DECISION RULES (from config.properties, fallback to Constants defaults):
+ *   finalScore >= risk.threshold.high       → HIGH_RISK → BLOCKED
+ *   finalScore >= risk.threshold.suspicious → SUSPICIOUS → WARNED
+ *   finalScore <  risk.threshold.suspicious → SAFE → ALLOWED
+ *
+ * This class is stateless — all methods are static.
+ *
+ * USAGE:
+ *   RiskScorer scorer = new RiskScorer(url, sender, subject);
+ *   scorer.aiModelScore = AIModelEngine.predict(url);
+ *   // ... set other scores ...
+ *   DecisionEngine.decide(scorer);
+ *   System.out.println(scorer.decision);  // "HIGH_RISK"
+ */
+public final class DecisionEngine {
+
+    private DecisionEngine() {}
+
+    // ── Core classification ──────────────────────────────────────────────
+
+    /**
+     * Calculates the final risk score and assigns a decision + action to the scorer.
+     *
+     * Steps:
+     *  1. Calls scorer.calculateFinalScore() to compute the weighted total.
+     *  2. Reads thresholds from config.properties (with Constants fallbacks).
+     *  3. Sets scorer.decision and scorer.actionTaken accordingly.
+     *  4. Returns the same scorer instance (for fluent chaining).
+     *
+     * @param scorer a RiskScorer with at least aiModelScore populated
+     * @return the same scorer, now with decision and actionTaken set
+     */
+    public static RiskScorer decide(RiskScorer scorer) {
+        if (scorer == null) {
+            throw new IllegalArgumentException("[DecisionEngine] Cannot decide on a null RiskScorer.");
+        }
+
+        // Step 1: Compute weighted final score
+        scorer.calculateFinalScore();
+
+        // Step 2: Load thresholds from config (allows runtime override)
+        ConfigLoader cfg = ConfigLoader.getInstance();
+        double thresholdHigh = cfg.getDouble("risk.threshold.high",
+                                             Constants.RISK_THRESHOLD_HIGH);
+        double thresholdSusp = cfg.getDouble("risk.threshold.suspicious",
+                                             Constants.RISK_THRESHOLD_SUSPICIOUS);
+
+        // Step 3: Classify
+        if (scorer.finalScore >= thresholdHigh) {
+            scorer.decision   = Constants.DECISION_HIGH_RISK;
+            scorer.actionTaken = Constants.ACTION_BLOCKED;
+
+        } else if (scorer.finalScore >= thresholdSusp) {
+            scorer.decision   = Constants.DECISION_SUSPICIOUS;
+            scorer.actionTaken = Constants.ACTION_WARNED;
+
+        } else {
+            scorer.decision   = Constants.DECISION_SAFE;
+            scorer.actionTaken = Constants.ACTION_ALLOWED;
+        }
+
+        // Step 4: Log decision
+        System.out.printf("[DecisionEngine] Score=%.4f → %-10s → %s%n",
+            scorer.finalScore, scorer.decision, scorer.actionTaken);
+
+        return scorer;
+    }
+
+    // ── Human-readable explanation ───────────────────────────────────────
+
+    /**
+     * Returns a human-readable explanation of why a decision was reached.
+     * Identifies the highest-contributing score and names it.
+     *
+     * Example output:
+     *   "Primary trigger: AI Model (0.91) — High-risk URL pattern detected."
+     *
+     * @param scorer a scorer that has already been through decide()
+     * @return explanation string suitable for alert dialogs and PDF reports
+     */
+    public static String getDecisionReason(RiskScorer scorer) {
+        if (scorer == null) return "No analysis data available.";
+
+        // Find the highest weighted contribution
+        double[] weightedScores = {
+            scorer.senderScore     * Constants.WEIGHT_SENDER,
+            scorer.textScore       * Constants.WEIGHT_TEXT,
+            scorer.aiModelScore    * Constants.WEIGHT_AI_MODEL,
+            scorer.threatIntelScore * Constants.WEIGHT_THREAT_INTEL,
+            scorer.visualScore     * Constants.WEIGHT_VISUAL
+        };
+
+        String[] layerNames = {
+            "Sender Reputation",
+            "Email Text (NLP)",
+            "AI URL Model",
+            "Threat Intelligence",
+            "Visual CNN"
+        };
+
+        double[] rawScores = {
+            scorer.senderScore,
+            scorer.textScore,
+            scorer.aiModelScore,
+            scorer.threatIntelScore,
+            scorer.visualScore
+        };
+
+        // Find which layer contributed the most to the final score
+        int maxIdx = 0;
+        for (int i = 1; i < weightedScores.length; i++) {
+            if (weightedScores[i] > weightedScores[maxIdx]) {
+                maxIdx = i;
+            }
+        }
+
+        String primaryLayer = layerNames[maxIdx];
+        double primaryScore = rawScores[maxIdx];
+
+        // Compose the reason message
+        String description = describeScore(maxIdx, primaryScore, scorer);
+        return String.format("Primary trigger: %s (%.2f) — %s", primaryLayer, primaryScore, description);
+    }
+
+    /**
+     * Generates a human-readable description for a specific layer's score.
+     *
+     * @param layerIndex index into the 5-layer array
+     * @param score      0.0–1.0 raw score for this layer
+     * @param scorer     full scorer context for additional detail
+     * @return short phrase describing why this layer scored high
+     */
+    private static String describeScore(int layerIndex, double score, RiskScorer scorer) {
+        return switch (layerIndex) {
+            case 0 -> score >= 0.7
+                ? "Sender domain appears suspicious or newly registered."
+                : "Sender analysis flagged minor anomalies.";
+            case 1 -> score >= 0.7
+                ? "Email body contains multiple urgent/credential-related keywords."
+                : "Email text contains some phishing language patterns.";
+            case 2 -> score >= 0.7
+                ? "URL structure matches high-risk phishing patterns (AI model)."
+                : "URL features partially match phishing patterns.";
+            case 3 -> scorer.phishtankConfirmed
+                ? "URL confirmed as phishing by PhishTank database."
+                : String.format("VirusTotal flagged by %d engines.", scorer.virusTotalDetections);
+            case 4 -> scorer.visualBrandDetected != null
+                ? "Webpage visually impersonates brand: " + scorer.visualBrandDetected
+                : "Visual layout matches known phishing page templates.";
+            default -> "Combined risk factors exceeded safe threshold.";
+        };
+    }
+
+    // ── Batch utility ────────────────────────────────────────────────────
+
+    /**
+     * Convenience method: creates a new RiskScorer with just an AI model score
+     * and runs the full decision pipeline. Useful for quick unit tests.
+     *
+     * @param url           the URL to evaluate
+     * @param aiModelScore  pre-computed AI model score
+     * @return decided RiskScorer
+     */
+    public static RiskScorer quickDecide(String url, double aiModelScore) {
+        RiskScorer scorer = new RiskScorer(url, "test@example.com", "Test");
+        scorer.aiModelScore = aiModelScore;
+        return decide(scorer);
+    }
+}

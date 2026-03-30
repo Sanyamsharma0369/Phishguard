@@ -1,0 +1,96 @@
+# PhishGuard - Phishing Keywords List
+# Used by TextNLPAnalyzer.java for TF-IDF keyword scoring.
+# Each line is one keyword/phrase. Lines starting with # are comments.
+
+# --- Urgency / Action Keywords ---
+urgent
+verify
+suspended
+confirm
+click here
+act now
+immediately
+action required
+account suspended
+account locked
+limited time
+expires soon
+your account
+finalize
+complete your
+update your
+reactivate
+validate
+
+# --- Credential / Financial Keywords ---
+password
+username
+login
+sign in
+credit card
+bank account
+social security
+ssn
+pin number
+cvv
+billing information
+payment details
+wire transfer
+direct deposit
+
+# --- Threat / Fear Keywords ---
+unauthorized access
+suspicious activity
+security breach
+breach detected
+security alert
+malware
+hacked
+compromised
+fraud alert
+identity theft
+
+# --- Lure Keywords ---
+you have won
+congratulations
+prize
+reward
+gift card
+free offer
+claim your
+selected
+lucky winner
+bonus
+
+# --- Request Keywords ---
+please confirm
+please verify
+please update
+please click
+click the link
+follow the link
+visit our website
+access your account
+log in now
+reset your password
+download now
+
+# --- Authority Impersonation Keywords ---
+customer support
+helpdesk
+support team
+it department
+security team
+technical support
+paypal
+amazon
+apple
+google
+microsoft
+netflix
+bank of america
+chase
+wells fargo
+irs
+tax refund
+government notice
