@@ -55,22 +55,67 @@ public class WebApiController {
         // Routes
         Spark.get("/",               WebApiController::rootDashboard);
         Spark.get("/api/dashboard",  WebApiController::dashboard);
+        Spark.get("/api/stats",      WebApiController::stats);
         Spark.get("/api/scan",      WebApiController::scanUrl);
         Spark.get("/api/incidents",  WebApiController::incidents);
+        Spark.get("/api/blocked",    WebApiController::blocked);
         Spark.get("/api/status",     WebApiController::status);
         Spark.get("/api/quarantine", WebApiController::quarantine);
+        Spark.get("/api/flask-status", WebApiController::flaskStatus);
 
         Spark.awaitInitialization();
         System.out.println("[WebAPI] Server running at http://localhost:8080");
     }
 
+    private static Object stats(Request req, Response res) throws Exception {
+        res.type("application/json");
+        Map<String, Object> s = new HashMap<>();
+        s.put("totalIncidents", IncidentDAO.getTotalIncidents());
+        int threats = IncidentDAO.getIncidentsByDecision("HIGH_RISK") + IncidentDAO.getIncidentsByDecision("SUSPICIOUS");
+        s.put("threats", threats);
+        s.put("blocked", IncidentDAO.getIncidentsByDecision("HIGH_RISK"));
+        s.put("avgRisk", IncidentDAO.getAverageRiskScore());
+        s.put("safe", IncidentDAO.getIncidentsByDecision("SAFE"));
+        s.put("emailsProcessed", com.phishguard.email.EmailMonitor.getEmailsProcessed());
+        return gson.toJson(s);
+    }
+
+    private static Object blocked(Request req, Response res) throws Exception {
+        res.type("application/json");
+        var all = IncidentDAO.getRecentIncidents(500);
+        var blockedList = all.stream().filter(i -> "HIGH_RISK".equals(i.decision)).toList();
+        return gson.toJson(blockedList);
+    }
+
+    private static Object flaskStatus(Request req, Response res) {
+        res.type("application/json");
+        boolean online = false;
+        try {
+            java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL("http://localhost:5000/health").openConnection();
+            c.setConnectTimeout(2000); c.setReadTimeout(2000);
+            online = c.getResponseCode() == 200;
+        } catch (Exception ignored) {}
+        return "{\"online\":" + online + "}";
+    }
+
     private static Object rootDashboard(Request req, Response res) {
+        res.type("text/html");
+        try {
+            java.io.InputStream is = WebApiController.class.getResourceAsStream("/dashboard.html");
+            if (is != null) return new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception ignored) {}
+        return "<h1>PhishGuard</h1><p>dashboard.html not found in resources</p>";
+    }
+
+    // Keep old inline dashboard method for backward compat
+    @SuppressWarnings("unused")
+    private static Object rootDashboardOld(Request req, Response res) {
         res.type("text/html");
         StringBuilder h = new StringBuilder();
         h.append("<!DOCTYPE html><html lang='en'><head><meta charset='UTF-8'>");
         h.append("<meta name='viewport' content='width=device-width,initial-scale=1'>");
         h.append("<title>PhishGuard Dashboard</title>");
-        // ← Changed from local /chartjs route to jsdelivr CDN
+        // Changed from local /chartjs route to jsdelivr CDN
         h.append("<script src=\"https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js\"></script>");
         h.append("<style>");
         h.append("*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}");

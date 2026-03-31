@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhishGuard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--surface:#161b22;--surface2:#21262d;--border:#30363d;
+  --text:#e6edf3;--muted:#8b949e;--faint:#484f58;
+  --green:#3fb950;--orange:#d29922;--red:#f85149;--blue:#58a6ff;--teal:#39d353;
+  --radius:6px;--transition:180ms ease;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;gap:8px;height:52px;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:var(--text);text-decoration:none;margin-right:16px}
+.logo svg{color:var(--blue)}
+.nav-links{display:flex;gap:2px;flex:1}
+.nav-link{padding:6px 14px;border-radius:var(--radius);font-size:13px;color:var(--muted);text-decoration:none;cursor:pointer;border:none;background:none;transition:color var(--transition),background var(--transition)}
+.nav-link:hover{color:var(--text);background:var(--surface2)}
+.nav-link.active{color:var(--text);background:var(--surface2)}
+.status-bar{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--muted)}
+.status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px}
+.dot-green{background:var(--green)}.dot-orange{background:var(--orange)}.dot-red{background:var(--red)}
+.page{display:none;padding:24px;max-width:1400px;margin:0 auto;width:100%}
+.page.active{display:block}
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.kpi-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.kpi-value{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:4px}
+.val-blue{color:var(--blue)}.val-red{color:var(--red)}.val-orange{color:var(--orange)}.val-green{color:var(--green)}
+.two-col{display:grid;grid-template-columns:1fr 320px;gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.card-title{font-size:13px;font-weight:600;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.badge{font-size:11px;padding:2px 8px;border-radius:var(--radius);background:var(--surface2);color:var(--muted)}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 12px;color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}
+td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.url-cell{max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:12px;color:var(--blue)}
+.sender-cell{font-size:12px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.risk-wrap{display:flex;align-items:center;gap:8px}
+.risk-bar{height:6px;border-radius:3px;background:var(--surface2);width:80px;overflow:hidden}
+.risk-fill{height:100%;border-radius:3px;transition:width .3s}
+.risk-val{font-size:12px;font-variant-numeric:tabular-nums;color:var(--text);min-width:36px}
+.decision{display:inline-block;padding:3px 8px;border-radius:3px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.decision.safe{background:rgba(63,185,80,.15);color:var(--green)}
+.decision.suspicious{background:rgba(210,153,34,.15);color:var(--orange)}
+.decision.high_risk{background:rgba(248,81,73,.15);color:var(--red)}
+.decision.blocked{background:rgba(248,81,73,.2);color:var(--red)}
+.scanner-form{display:flex;gap:8px;margin-bottom:16px}
+.scanner-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;color:var(--text);font-size:13px;outline:none}
+.scanner-input:focus{border-color:var(--blue)}
+.btn{padding:8px 16px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:opacity var(--transition)}
+.btn-primary{background:var(--blue);color:#000}
+.btn-primary:hover{opacity:.85}
+.scan-result{background:var(--surface2);border-radius:var(--radius);padding:12px;font-size:13px;display:none}
+.scan-result.show{display:block}
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.page-title{font-size:18px;font-weight:600}
+.page-actions{display:flex;gap:8px}
+.live{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--green);font-weight:500}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.empty{text-align:center;padding:48px 24px;color:var(--muted)}
+.empty-icon{font-size:32px;margin-bottom:12px}
+.filter-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.filter-btn{padding:5px 12px;border-radius:var(--radius);font-size:12px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all var(--transition)}
+.filter-btn.active,.filter-btn:hover{background:var(--surface2);color:var(--text);border-color:var(--blue)}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="#">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    PhishGuard
+  </a>
+  <div class="nav-links">
+    <button class="nav-link active" onclick="showPage('dashboard',this)">Dashboard</button>
+    <button class="nav-link" onclick="showPage('incidents',this)">All Incidents</button>
+    <button class="nav-link" onclick="showPage('blocked',this)">&#x1F6A8; Blocked</button>
+    <button class="nav-link" onclick="showPage('scanner',this)">URL Scanner</button>
+  </div>
+  <div class="status-bar">
+    <span><span class="status-dot dot-green" id="apiDot"></span>API <span id="apiStatus">Online</span></span>
+    <span><span class="status-dot dot-orange" id="flaskDot"></span>Flask CNN <span id="flaskStatus">Checking...</span></span>
+    <span>Emails <strong id="emailCount">-</strong></span>
+    <span>Threats <strong id="threatCount" style="color:var(--red)">-</strong></span>
+    <span class="live"><span class="live-dot"></span>LIVE</span>
+    <span id="lastUpdate" style="color:var(--muted);font-size:11px"></span>
+  </div>
+</nav>
+
+<!-- PAGE: DASHBOARD -->
+<div id="page-dashboard" class="page active">
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Total Incidents</div><div class="kpi-value val-blue" id="kpi-total">-</div><div class="kpi-sub">All time</div></div>
+    <div class="kpi"><div class="kpi-label">Threats</div><div class="kpi-value val-red" id="kpi-threats">-</div><div class="kpi-sub">High + Suspicious</div></div>
+    <div class="kpi"><div class="kpi-label">Blocked</div><div class="kpi-value val-red" id="kpi-blocked">-</div><div class="kpi-sub">High risk</div></div>
+    <div class="kpi"><div class="kpi-label">Avg Risk</div><div class="kpi-value val-orange" id="kpi-avgrisk">-</div><div class="kpi-sub">0.0-1.0 scale</div></div>
+    <div class="kpi"><div class="kpi-label">Safe</div><div class="kpi-value val-green" id="kpi-safe">-</div><div class="kpi-sub">Passed all checks</div></div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Recent Incidents <span class="badge" id="recent-count">-</span></div>
+      <div class="table-wrap">
+        <table><thead><tr><th>URL / Target</th><th>Sender</th><th>Risk Score</th><th>Decision</th></tr></thead>
+        <tbody id="recent-tbody"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Breakdown</div>
+        <canvas id="breakdownChart" height="200"></canvas>
+        <div style="display:flex;gap:12px;margin-top:12px;font-size:12px;justify-content:center">
+          <span style="color:var(--green)">&#9679; Safe</span>
+          <span style="color:var(--orange)">&#9679; Suspicious</span>
+          <span style="color:var(--red)">&#9679; High Risk</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Quick Scan</div>
+        <div class="scanner-form">
+          <input class="scanner-input" id="quick-url" placeholder="https://example.com" />
+          <button class="btn btn-primary" onclick="quickScan()">Scan</button>
+        </div>
+        <div class="scan-result" id="quick-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: ALL INCIDENTS -->
+<div id="page-incidents" class="page">
+  <div class="page-header">
+    <div class="page-title">All Incidents</div>
+    <div class="page-actions">
+      <div class="filter-bar">
+        <button class="filter-btn active" onclick="filterIncidents('ALL',this)">All</button>
+        <button class="filter-btn" onclick="filterIncidents('SAFE',this)">Safe</button>
+        <button class="filter-btn" onclick="filterIncidents('SUSPICIOUS',this)">Suspicious</button>
+        <button class="filter-btn" onclick="filterIncidents('HIGH_RISK',this)">High Risk</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table><thead><tr><th>Time</th><th>URL / Target</th><th>Sender</th><th>Risk Score</th><th>Decision</th><th>Action</th></tr></thead>
+      <tbody id="incidents-tbody"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: BLOCKED -->
+<div id="page-blocked" class="page">
+  <div class="page-header">
+    <div class="page-title">&#x1F6A8; Blocked &amp; High Risk URLs</div>
+    <span class="badge" id="blocked-count">0 blocked</span>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table><thead><tr><th>Time</th><th>URL Blocked</th><th>Sender</th><th>Risk Score</th><th>Decision</th></tr></thead>
+      <tbody id="blocked-tbody"><tr><td colspan="5" class="empty"><div class="empty-icon">&#x1F6E1;&#xFE0F;</div>No blocked URLs yet</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: URL SCANNER -->
+<div id="page-scanner" class="page">
+  <div class="page-header"><div class="page-title">URL Scanner</div></div>
+  <div class="card" style="max-width:600px">
+    <div class="card-title">Scan a URL for phishing</div>
+    <div class="scanner-form">
+      <input class="scanner-input" id="scan-url-input" placeholder="https://suspicious-site.xyz/login" />
+      <button class="btn btn-primary" onclick="doFullScan()">Scan URL</button>
+    </div>
+    <div class="scan-result" id="full-scan-result"></div>
+  </div>
+  <div class="card" style="margin-top:16px;max-width:600px">
+    <div class="card-title">Recent Scans</div>
+    <div id="scan-history" style="font-size:13px;color:var(--muted)">No scans yet this session.</div>
+  </div>
+</div>
+
+<script>
+const API='';
+let chart=null,allIncidents=[],currentFilter='ALL';
+const scanHistory=[];
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function showPage(id,btn){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));document.getElementById('page-'+id).classList.add('active');if(btn)btn.classList.add('active');if(id==='blocked')loadBlocked();if(id==='incidents')loadAllIncidents()}
+function riskColor(s){if(s>=0.8)return'var(--red)';if(s>=0.5)return'var(--orange)';return'var(--green)'}
+function decisionBadge(d){const map={'HIGH_RISK':'high_risk','SUSPICIOUS':'suspicious','SAFE':'safe','BLOCKED':'blocked'};return'<span class="decision '+(map[d]||'safe')+'">'+esc(d)+'</span>'}
+function riskBar(score){const pct=Math.min(100,score*100).toFixed(0),color=riskColor(score);return'<div class="risk-wrap"><div class="risk-bar"><div class="risk-fill" style="width:'+pct+'%;background:'+color+'"></div></div><span class="risk-val">'+score.toFixed(3)+'</span></div>'}
+function formatTime(ts){if(!ts)return'\u2014';const d=new Date(ts);return d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+
+async function loadDashboard(){
+  try{
+    const r=await fetch(API+'/api/stats');if(!r.ok)return;const s=await r.json();
+    document.getElementById('kpi-total').textContent=s.totalIncidents??0;
+    document.getElementById('kpi-threats').textContent=s.threats??0;
+    document.getElementById('kpi-blocked').textContent=s.blocked??0;
+    document.getElementById('kpi-avgrisk').textContent=(s.avgRisk??0).toFixed(3);
+    document.getElementById('kpi-safe').textContent=s.safe??0;
+    document.getElementById('emailCount').textContent=s.emailsProcessed??0;
+    document.getElementById('threatCount').textContent=s.threats??0;
+    document.getElementById('lastUpdate').textContent=new Date().toLocaleTimeString();
+    document.getElementById('apiDot').className='status-dot dot-green';
+    document.getElementById('apiStatus').textContent='Online';
+    const safe=s.safe??0,susp=(s.threats??0)-(s.blocked??0),high=s.blocked??0;
+    if(chart)chart.destroy();
+    chart=new Chart(document.getElementById('breakdownChart'),{type:'doughnut',data:{labels:['Safe','Suspicious','High Risk'],datasets:[{data:[safe,susp,high],backgroundColor:['#3fb950','#d29922','#f85149'],borderWidth:0}]},options:{plugins:{legend:{display:false}},cutout:'70%'}});
+  }catch(e){document.getElementById('apiDot').className='status-dot dot-red';document.getElementById('apiStatus').textContent='Offline'}
+  try{const rf=await fetch(API+'/api/flask-status');const fs=await rf.json();document.getElementById('flaskDot').className=fs.online?'status-dot dot-green':'status-dot dot-orange';document.getElementById('flaskStatus').textContent=fs.online?'Online':'Offline'}catch(e){}
+  try{
+    const ir=await fetch(API+'/api/incidents?limit=20');const incidents=await ir.json();
+    document.getElementById('recent-count').textContent=incidents.length+' records';
+    const tbody=document.getElementById('recent-tbody');
+    if(!incidents.length){tbody.innerHTML='<tr><td colspan="4"><div class="empty"><div class="empty-icon">&#x1F6E1;&#xFE0F;</div>No incidents yet</div></td></tr>';return}
+    tbody.innerHTML=incidents.map(i=>{const sc=i.finalScore!=null?i.finalScore:i.aiModelScore||0;return'<tr><td><span class="url-cell" title="'+esc(i.url||'')+'">'+esc(i.url||'N/A')+'</span></td><td><span class="sender-cell">'+esc(i.emailSender||i.senderEmail||'\u2014')+'</span></td><td>'+riskBar(sc)+'</td><td>'+decisionBadge(i.decision||'SAFE')+'</td></tr>'}).join('');
+  }catch(e){}
+}
+
+async function loadAllIncidents(){try{const r=await fetch(API+'/api/incidents?limit=500');allIncidents=await r.json();renderIncidentsTable()}catch(e){document.getElementById('incidents-tbody').innerHTML='<tr><td colspan="6" class="empty">Error loading incidents</td></tr>'}}
+function filterIncidents(f,btn){currentFilter=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');renderIncidentsTable()}
+function renderIncidentsTable(){const filtered=currentFilter==='ALL'?allIncidents:allIncidents.filter(i=>i.decision===currentFilter);const tbody=document.getElementById('incidents-tbody');if(!filtered.length){tbody.innerHTML='<tr><td colspan="6"><div class="empty"><div class="empty-icon">&#x1F50D;</div>No '+currentFilter.toLowerCase()+' incidents found</div></td></tr>';return}tbody.innerHTML=filtered.map(i=>{const sc=i.finalScore!=null?i.finalScore:i.aiModelScore||0;return'<tr><td style="font-size:11px;color:var(--muted);white-space:nowrap">'+formatTime(i.timestamp)+'</td><td><span class="url-cell" title="'+esc(i.url||'')+'">'+esc(i.url||'N/A')+'</span></td><td><span class="sender-cell">'+esc(i.emailSender||i.senderEmail||'\u2014')+'</span></td><td>'+riskBar(sc)+'</td><td>'+decisionBadge(i.decision||'SAFE')+'</td><td style="font-size:11px;color:var(--muted)">'+esc(i.actionTaken||'\u2014')+'</td></tr>'}).join('')}
+
+async function loadBlocked(){try{const r=await fetch(API+'/api/blocked');const blocked=await r.json();document.getElementById('blocked-count').textContent=blocked.length+' blocked';const tbody=document.getElementById('blocked-tbody');if(!blocked.length){tbody.innerHTML='<tr><td colspan="5"><div class="empty"><div class="empty-icon">&#x1F6E1;&#xFE0F;</div>No blocked URLs \u2014 all clear!</div></td></tr>';return}tbody.innerHTML=blocked.map(i=>{const sc=i.finalScore!=null?i.finalScore:i.aiModelScore||0;return'<tr style="background:rgba(248,81,73,.04)"><td style="font-size:11px;color:var(--muted);white-space:nowrap">'+formatTime(i.timestamp)+'</td><td><span class="url-cell" style="color:var(--red)" title="'+esc(i.url||'')+'">'+esc(i.url||'N/A')+'</span></td><td><span class="sender-cell">'+esc(i.emailSender||'\u2014')+'</span></td><td>'+riskBar(sc)+'</td><td>'+decisionBadge(i.decision||'HIGH_RISK')+'</td></tr>'}).join('')}catch(e){document.getElementById('blocked-tbody').innerHTML='<tr><td colspan="5" class="empty">Error loading blocked URLs</td></tr>'}}
+
+async function quickScan(){const url=document.getElementById('quick-url').value.trim();if(!url)return;const el=document.getElementById('quick-result');el.className='scan-result show';el.innerHTML='<span style="color:var(--muted)">Scanning...</span>';try{const r=await fetch(API+'/api/scan?url='+encodeURIComponent(url));const d=await r.json();const sc=d.finalScore!=null?d.finalScore:d.score||0;const color=riskColor(sc);el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">'+esc(url)+'</div><strong style="color:'+color+'">'+esc(d.decision||'SAFE')+'</strong> \u2014 Score: <strong>'+sc.toFixed(4)+'</strong></div>'+decisionBadge(d.decision||'SAFE')+'</div>'}catch(e){el.innerHTML='<span style="color:var(--red)">Scan failed \u2014 check Java server</span>'}}
+
+async function doFullScan(){const url=document.getElementById('scan-url-input').value.trim();if(!url)return;const el=document.getElementById('full-scan-result');el.className='scan-result show';el.innerHTML='<span style="color:var(--muted)">Scanning...</span>';try{const r=await fetch(API+'/api/scan?url='+encodeURIComponent(url));const d=await r.json();const sc=d.finalScore!=null?d.finalScore:d.score||0;const color=riskColor(sc);el.innerHTML='<div style="margin-bottom:8px;font-size:12px;color:var(--muted)">URL: '+esc(url)+'</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><div class="kpi-label">Risk Score</div><div style="font-size:24px;font-weight:700;color:'+color+'">'+sc.toFixed(4)+'</div></div><div><div class="kpi-label">Decision</div>'+decisionBadge(d.decision||'SAFE')+'</div></div>';scanHistory.unshift({url,score:sc,decision:d.decision||'SAFE',time:new Date()});document.getElementById('scan-history').innerHTML=scanHistory.slice(0,10).map(s=>'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span class="url-cell" style="max-width:300px">'+esc(s.url)+'</span><span style="display:flex;gap:8px;align-items:center">'+riskBar(s.score)+decisionBadge(s.decision)+'</span></div>').join('')}catch(e){el.innerHTML='<span style="color:var(--red)">Scan failed \u2014 check Java server is running</span>'}}
+
+loadDashboard();setInterval(loadDashboard,30000);
+</script>
+</body>
+</html>
