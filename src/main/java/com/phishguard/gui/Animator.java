@@ -2,7 +2,6 @@ package com.phishguard.gui;
 
 import javax.swing.JComponent;
 import javax.swing.Timer;
-import java.awt.Color;
 import java.util.function.Consumer;
 
 public class Animator {

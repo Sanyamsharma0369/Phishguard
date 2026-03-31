@@ -41,16 +41,14 @@ public final class EntropyCalculator {
         // We use an int array for speed over a HashMap for ASCII (0–127)
         // and fall back to a HashMap for any extended chars.
         int[] freq = new int[256];
-        int extendedCount = 0;
         java.util.Map<Character, Integer> extFreq = null;
 
         for (char c : text.toCharArray()) {
             if (c < 256) {
                 freq[c]++;
             } else {
-                extendedCount++;
                 if (extFreq == null) extFreq = new java.util.HashMap<>();
-                extFreq.merge(c, 1, Integer::sum);
+                extFreq.put(c, extFreq.getOrDefault(c, 0) + 1);
             }
         }
 

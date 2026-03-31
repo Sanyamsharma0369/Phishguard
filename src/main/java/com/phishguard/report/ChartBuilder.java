@@ -13,7 +13,6 @@ import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.renderer.category.BarRenderer;
 import org.jfree.chart.renderer.category.GradientBarPainter;
 import org.jfree.chart.title.LegendTitle;
-import org.jfree.chart.title.TextTitle;
 import org.jfree.data.category.DefaultCategoryDataset;
 import org.jfree.data.general.DefaultPieDataset;
 
@@ -40,12 +39,6 @@ public final class ChartBuilder {
 
     // ── Theme colors ──────────────────────────────────────────────────────
     private static final Color BG_DARK       = new Color(0x1e1e2e);
-    private static final Color PANEL_DARK    = new Color(0x2a2a3d);
-    private static final Color COLOR_SAFE    = new Color(0x2ecc71);
-    private static final Color COLOR_WARN    = new Color(0xf39c12);
-    private static final Color COLOR_RISK    = new Color(0xe74c3c);
-    private static final Color COLOR_ACCENT  = new Color(0x4f8ef7);
-    private static final Color COLOR_TEXT    = Color.WHITE;
 
     private ChartBuilder() {}
 
@@ -57,7 +50,7 @@ public final class ChartBuilder {
      *
      * @return configured JFreeChart pie chart
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public static JFreeChart buildPieChart() {
         DefaultPieDataset<String> dataset = new DefaultPieDataset<>();
 

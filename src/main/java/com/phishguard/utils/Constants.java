@@ -33,7 +33,7 @@ public final class Constants {
     public static final double WEIGHT_VISUAL    = 0.10;
 
     // ── Risk Thresholds (overridden by config.properties) ─────────────
-    public static final double DEFAULT_THRESHOLD_HIGH       = 0.85;
+    public static final double DEFAULT_THRESHOLD_HIGH       = 0.75;
     public static final double DEFAULT_THRESHOLD_SUSPICIOUS = 0.50;
 
     // ── AI Model Trigger Threshold ─────────────────────────────────────
@@ -127,4 +127,8 @@ public final class Constants {
     public static final String MODEL_PATH_NB       = MODEL_NAIVE_BAYES;
     /** Classpath path to Random Forest Weka model */
     public static final String MODEL_PATH_RF       = MODEL_RANDOM_FOREST;
+
+    // ── Ensemble Weights ──────────────────────────────────────────────
+    public static final double ENSEMBLE_WEIGHT_RF = 0.65;
+    public static final double ENSEMBLE_WEIGHT_NB = 0.35;
 }

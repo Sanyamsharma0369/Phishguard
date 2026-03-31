@@ -183,6 +183,7 @@ public class DashboardPanel extends JPanel {
         chartArea.repaint();
     }
 
+    @SuppressWarnings("rawtypes")
     private void applyDarkThemePie(JFreeChart chart) {
         if (chart == null) return;
         chart.setBackgroundPaint(UITheme.BG_PRIMARY);

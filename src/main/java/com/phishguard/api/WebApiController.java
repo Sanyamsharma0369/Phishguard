@@ -70,11 +70,8 @@ public class WebApiController {
         h.append("<!DOCTYPE html><html lang='en'><head><meta charset='UTF-8'>");
         h.append("<meta name='viewport' content='width=device-width,initial-scale=1'>");
         h.append("<title>PhishGuard Dashboard</title>");
-        h.append("<link rel='preconnect' href='https://fonts.googleapis.com'>");
-        h.append("<link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>");
-        h.append("<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap' rel='stylesheet'>");
-        // ← Changed from cdn.jsdelivr.net to local /chartjs route
-        h.append("<script src='/chartjs'></script>");
+        // ← Changed from local /chartjs route to jsdelivr CDN
+        h.append("<script src=\"https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js\"></script>");
         h.append("<style>");
         h.append("*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}");
         h.append(":root{--bg:#0a0c10;--s1:#111318;--s2:#181b22;--br:rgba(255,255,255,0.07);");
@@ -339,6 +336,7 @@ public class WebApiController {
         return gson.toJson(new java.util.ArrayList<>());
     }
 
+    @SuppressWarnings("unused")
     private static class DashboardData {
         int totalEmails;
         int threats;
@@ -349,6 +347,7 @@ public class WebApiController {
         int quarantineCount;
     }
 
+    @SuppressWarnings("unused")
     private static class Breakdown {
         int safe;
         int suspicious;

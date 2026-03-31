@@ -96,6 +96,19 @@ public class RiskScorer {
                    + (threatIntelScore * Constants.WEIGHT_THREAT_INTEL)
                    + (visualScore    * Constants.WEIGHT_VISUAL);
 
+        // Count total active weight
+        double totalWeight = 0;
+        if (aiModelScore > 0)     { totalWeight += Constants.WEIGHT_AI_MODEL; }
+        if (senderScore > 0)      { totalWeight += Constants.WEIGHT_SENDER; }
+        if (textScore > 0)        { totalWeight += Constants.WEIGHT_TEXT; }
+        if (threatIntelScore > 0) { totalWeight += Constants.WEIGHT_THREAT_INTEL; }
+        if (visualScore > 0)      { totalWeight += Constants.WEIGHT_VISUAL; }
+
+        // Normalize by actual active weight if not all layers fired
+        if (totalWeight > 0 && totalWeight < 1.0) {
+            finalScore = finalScore / totalWeight;
+        }
+
         // Clamp to valid probability range
         finalScore = Math.max(0.0, Math.min(1.0, finalScore));
     }

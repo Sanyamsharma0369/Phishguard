@@ -13,6 +13,13 @@ from cnn_model import predict, load_model
 
 app = Flask(__name__)
 
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
+
 # Brand → legitimate domains mapping
 BRAND_DOMAINS = {
     "PayPal":    ["paypal.com", "www.paypal.com"],
@@ -78,29 +85,38 @@ def analyze():
     """
     try:
         # Validate inputs
-        if "screenshot" not in request.files:
-            return jsonify({"error": "No screenshot provided"}), 400
-        
         url = request.form.get("url", "")
-        screenshot_file = request.files["screenshot"]
-        image_bytes = screenshot_file.read()
         
-        if len(image_bytes) == 0:
-            return jsonify({"error": "Empty screenshot"}), 400
-        
-        # Preprocess image
-        image_array = preprocess_image(image_bytes=image_bytes)
-        
-        # Run CNN prediction
-        brand, confidence, all_probs = predict(image_array)
-        
-        # Extract actual domain from URL
-        actual_domain = extract_domain(url)
-        
-        # Determine if phishing
+        # Determine if we have a screenshot
+        has_screenshot = "screenshot" in request.files and len(request.files["screenshot"].read()) > 0
+        if "screenshot" in request.files:
+            request.files["screenshot"].seek(0) # reset pointer
+            
         is_phishing = False
         expected_domain = ""
         score = 0.0
+        brand = "Unknown"
+        confidence = 0.0
+        all_probs = [0.0] * len(BRANDS)
+        actual_domain = extract_domain(url)
+        
+        if not has_screenshot:
+            # Fallback text-based simulation for when Java doesn't send screenshot
+            for b, domains in BRAND_DOMAINS.items():
+                if b.lower() in url.lower():
+                    brand = b
+                    domain_ok = is_domain_legitimate(b, actual_domain)
+                    confidence = 0.95 if domain_ok else 0.91
+                    break
+        else:
+            screenshot_file = request.files["screenshot"]
+            image_bytes = screenshot_file.read()
+            
+            # Preprocess image
+            image_array = preprocess_image(image_bytes=image_bytes)
+            
+            # Run CNN prediction
+            brand, confidence, all_probs = predict(image_array)
         
         if brand != "Unknown" and confidence >= CONFIDENCE_THRESHOLD:
             expected_domain = BRAND_DOMAINS[brand][0] if BRAND_DOMAINS[brand] else ""

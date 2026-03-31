@@ -542,11 +542,9 @@ public class ScannerPanel extends JPanel {
     }
 
     class ScoreGauge extends JPanel {
-        private double sc = 0;
         private int drawSc = 0;
         public ScoreGauge() { setOpaque(false); setPreferredSize(new Dimension(140, 140)); }
         public void setScore(double sc) {
-            this.sc = sc;
             Animator.countUp(0, (int)(sc*100), 1000, v -> { drawSc = v; repaint(); });
         }
         @Override

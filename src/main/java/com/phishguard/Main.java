@@ -3,10 +3,10 @@ package com.phishguard;
 import com.phishguard.api.WebApiController;
 import com.phishguard.database.DBConnection;
 import com.phishguard.detection.AIModelEngine;
-import com.phishguard.gui.MainWindow;
+// Removed unused: import com.phishguard.gui.MainWindow;
 import com.phishguard.utils.ConfigLoader;
 
-import javax.swing.*;
+// Removed unused: import javax.swing.*;
 
 public class Main {
 
@@ -53,8 +53,9 @@ public class Main {
             System.err.println("[Main] ✗ Web API error: " + e.getMessage());
         }
 
-        // Step 5: Launch GUI
-        System.out.println("[Main] Launching GUI...");
+        // Step 5: Launch GUI (disabled per user request)
+        System.out.println("[Main] GUI disabled. Web dashboard only.");
+        /*
         SwingUtilities.invokeLater(() -> {
             try {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
@@ -63,6 +64,19 @@ public class Main {
             window.setVisible(true);
             System.out.println("[Main] ✓ GUI launched");
         });
+        */
+
+        // Start email monitoring in background thread
+        new Thread(() -> {
+            try {
+                System.out.println("[Main] Starting email monitor...");
+                new com.phishguard.email.EmailMonitor().run();  // ← FIXED
+            } catch (Exception e) {
+                System.err.println("[Main] Email monitor error: " + e.getMessage());
+            }
+        }, "EmailMonitor-Thread").start();
+
+
 
         System.out.println("[Main] PhishGuard is running!");
         System.out.println("[Main] Web Dashboard -> http://localhost:8080");

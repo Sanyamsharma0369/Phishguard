@@ -216,8 +216,8 @@ public class EmailMonitor implements Runnable {
         props.put("mail.imaps.port",              cfg.get("email.port", "993"));
         props.put("mail.imaps.ssl.enable",        "true");
         props.put("mail.imaps.ssl.trust",         "*");
-        props.put("mail.imaps.connectiontimeout", "10000");
-        props.put("mail.imaps.timeout",           "10000");
+        props.put("mail.imaps.connectiontimeout", "30000");
+        props.put("mail.imaps.timeout",           "30000");
 
         Session session = Session.getInstance(props);
         Store store = session.getStore(Constants.IMAP_PROTOCOL);

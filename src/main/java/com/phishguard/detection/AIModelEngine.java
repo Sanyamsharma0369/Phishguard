@@ -2,68 +2,49 @@ package com.phishguard.detection;
 
 import com.phishguard.utils.Constants;
 import weka.classifiers.Classifier;
-import weka.core.Attribute;
+import weka.classifiers.bayes.NaiveBayes;
+import weka.classifiers.trees.RandomForest;
 import weka.core.DenseInstance;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.SerializationHelper;
 
 import java.io.InputStream;
-import java.util.ArrayList;
 
 /**
- * PhishGuard - AIModelEngine.java
- * -------------------------------------------------
- * Loads pre-trained Weka ML models (XGBoost + RandomForest ensemble)
- * and predicts phishing probability for a given URL.
+ * AIModelEngine — loads Weka RandomForest + NaiveBayes models,
+ * predicts phishing probability for a given URL feature vector.
  *
- * MODEL FILES (placed in src/main/resources/models/ after training):
- *   - models/xgboost.model      → Weka XGBoost tree ensemble
- *   - models/randomforest.model → Weka RandomForest classifier
- *
- * ENSEMBLE STRATEGY:
- *   finalScore = (rfScore + xgScore) / 2.0
- *
- * FALLBACK MODE (when model files are missing):
- *   Uses a hand-crafted heuristic formula derived from URL features:
- *   score = noHttps(0.30) + hasIp(0.40) + keywords(0.15) + entropy(0.20)
- *   This ensures the system works end-to-end before models are trained.
- *
- * USAGE:
- *   AIModelEngine.loadModels();           // call once at startup
- *   double score = AIModelEngine.predict(url);  // call per URL
+ * Thread-safety: a fresh Instances clone is created per prediction call.
+ * Model references are read-only after loadModels() completes.
  */
 public final class AIModelEngine {
 
-    // ── Model state ─────────────────────────────────────────────────────
-    private static Classifier randomForestModel = null;
-    private static Classifier naiveBayesModel     = null;
-    private static boolean    fallbackMode       = true;
+    // ── Model instances (loaded once, read-only after init) ──────────────
+    private static Classifier rfModel;
+    private static Classifier nbModel;
 
-    // ── Weka dataset structure (shared Instances header) ─────────────────
-    private static Instances datasetHeader = null;
+    // ── Dataset header (schema only — NO data rows, cloned per prediction) ─
+    private static Instances datasetHeader;
+
+    private static boolean loaded      = false;
+    private static boolean fallbackMode = true;
 
     private AIModelEngine() {}
 
-    // ── Startup ─────────────────────────────────────────────────────────
+    // ── Load ──────────────────────────────────────────────────────────────
 
     /**
-     * Attempts to load both Weka models from classpath resources/models/.
+     * Attempts to load both Weka models from classpath resources.
      * Sets fallbackMode = false only if BOTH models load successfully.
-     * Safe to call multiple times (subsequent calls are no-ops).
-     *
-     * Should be called from Main.java during application startup.
      */
-    public static void loadModels() {
-        if (!fallbackMode) {
+    public static synchronized void loadModels() {
+        if (loaded && !fallbackMode) {
             System.out.println("[AIModel] Models already loaded.");
             return;
         }
 
         System.out.println("[AIModel] Attempting to load Weka models...");
-
-        // Build the shared Weka Instances header (schema for instances)
-        datasetHeader = buildDatasetHeader();
 
         boolean rfLoaded = false, nbLoaded = false;
 
@@ -72,7 +53,11 @@ public final class AIModelEngine {
             if (rfStream == null) {
                 System.out.println("[AIModel] randomforest.model not found on classpath.");
             } else {
-                randomForestModel = (Classifier) SerializationHelper.read(rfStream);
+                rfModel = (Classifier) SerializationHelper.read(rfStream);
+                // FIX 1: deterministic tie-breaking if it's a RandomForest
+                if (rfModel instanceof RandomForest) {
+                    ((RandomForest) rfModel).setSeed(42);
+                }
                 rfLoaded = true;
                 System.out.println("[AIModel] RandomForest model loaded successfully.");
             }
@@ -85,7 +70,7 @@ public final class AIModelEngine {
             if (nbStream == null) {
                 System.out.println("[AIModel] naivebayes.model not found on classpath.");
             } else {
-                naiveBayesModel = (Classifier) SerializationHelper.read(nbStream);
+                nbModel = (Classifier) SerializationHelper.read(nbStream);
                 nbLoaded = true;
                 System.out.println("[AIModel] Naive Bayes model loaded successfully.");
             }
@@ -93,182 +78,113 @@ public final class AIModelEngine {
             System.err.println("[AIModel] Error loading Naive Bayes model: " + e.getMessage());
         }
 
-        // ── Determine mode ──────────────────────────────────────────────
+        // ── Build schema ────────────────────────────────────────────────
+        datasetHeader = buildDatasetHeader();
+
         if (rfLoaded && nbLoaded) {
             fallbackMode = false;
+            loaded       = true;
             System.out.println("[AIModel] ✓ REAL MODEL MODE — fallback disabled");
         } else {
             fallbackMode = true;
+            loaded       = true;
             System.out.println("[AIModel] *** Running in FALLBACK MODE — models not found ***");
-            System.out.println("[AIModel]     Train models and place in src/main/resources/models/ to enable ML scoring.");
         }
     }
 
     // ── Prediction ──────────────────────────────────────────────────────
 
     /**
-     * Predicts phishing probability for the given URL.
-     *
-     * @param url the URL to analyze
-     * @return phishing probability: 0.0 (safe) to 1.0 (phishing)
-     * @throws Exception if model prediction fails unexpectedly
+     * Convenient wrapper that extracts features and predicts probability.
      */
     public static double predict(String url) throws Exception {
-        if (url == null || url.isBlank()) {
-            return 0.0;
-        }
-
-        // Extract 8-feature vector
+        if (url == null || url.isBlank()) return 0.0;
         double[] features = URLFeatureExtractor.extract(url);
-
-        if (fallbackMode) {
-            return fallbackPredict(features);
-        }
-
-        return ensemblePredict(features);
+        return predict(features);
     }
 
-    // ── Private helpers ─────────────────────────────────────────────────
-
     /**
-     * Ensemble prediction: average of RandomForest and XGBoost scores.
-     * Both classifiers must be loaded (fallbackMode == false).
-     *
-     * Weka classifiers return a distribution array: [prob_legitimate, prob_phishing]
-     * We return the "phishing" class probability (index 1).
-     *
-     * @param features 8-element normalized feature array from URLFeatureExtractor
-     * @return ensemble phishing probability
-     * @throws Exception on Weka classification failure
+     * Thread-safe prediction logic using an isolated Instances container.
      */
-    private static double ensemblePredict(double[] features) throws Exception {
-        // Build a Weka DenseInstance from the feature array
-        Instance instance = buildInstance(features);
+    public static double predict(double[] features) throws Exception {
+        if (fallbackMode || !loaded || rfModel == null || nbModel == null) {
+            return fallbackHeuristic(features);
+        }
 
-        // Get class probability distributions
-        double[] rfDist = randomForestModel.distributionForInstance(instance);
-        double[] nbDist = naiveBayesModel.distributionForInstance(instance);
+        // FIX 2: Create an isolated Instances container per prediction.
+        //         Never share a mutable Instances object across threads.
+        Instances localHeader = new Instances(datasetHeader, 0); 
 
-        // Index 1 = "phishing" class probability
+        // Build the instance
+        Instance inst = new DenseInstance(Constants.FEATURE_COUNT + 1);
+        inst.setDataset(localHeader);
+        for (int i = 0; i < Constants.FEATURE_COUNT; i++) {
+            inst.setValue(i, features[i]);
+        }
+        inst.setClassMissing();
+        localHeader.add(inst);
+
+        // Get probability distributions (index 1 = phishing class)
+        Instance testInstance = localHeader.instance(0);
+        double[] rfDist = rfModel.distributionForInstance(testInstance);
+        double[] nbDist = nbModel.distributionForInstance(testInstance);
+
         double rfScore = (rfDist.length > 1) ? rfDist[1] : rfDist[0];
         double nbScore = (nbDist.length > 1) ? nbDist[1] : nbDist[0];
 
-        double ensembleScore = (rfScore * 0.65) + (nbScore * 0.35);
-        System.out.printf("[AIModel] RF=%.3f  NB=%.3f  Ensemble=%.3f%n", rfScore, nbScore, ensembleScore);
+        // Weighted ensemble
+        double ensemble = (rfScore * Constants.ENSEMBLE_WEIGHT_RF)
+                        + (nbScore * Constants.ENSEMBLE_WEIGHT_NB);
 
-        return clamp(ensembleScore);
+        System.out.printf("[AIModel] RF=%.3f  NB=%.3f  Ensemble=%.3f%n", 
+                          rfScore, nbScore, ensemble);
+
+        return Math.min(1.0, Math.max(0.0, ensemble));
     }
 
-    /**
-     * Fallback heuristic scoring when model files are absent.
-     * Derived from URL features with manually tuned weights.
-     *
-     * Formula:
-     *   score = noHttps   × 0.30   (missing HTTPS is a strong signal)
-     *         + hasIp     × 0.40   (IP-based URLs are almost always phishing)
-     *         + keywords  × 0.15   (normalized keyword count)
-     *         + entropy   × 0.20   (if entropy > 3.5, else 0)
-     *
-     * @param features feature array from URLFeatureExtractor
-     * @return heuristic phishing score [0.0, 1.0]
-     */
-    private static double fallbackPredict(double[] features) {
+    // ── Fallback Heuristic ────────────────────────────────────────────────
+
+    private static double fallbackHeuristic(double[] features) {
         double score = 0.0;
-
-        // No HTTPS (features[1] == 0 means no HTTPS → 0.30 penalty)
         score += (features[Constants.FEAT_HAS_HTTPS] == 0.0) ? 0.30 : 0.0;
-
-        // Has IP address (strong phishing indicator)
         score += features[Constants.FEAT_HAS_IP] * 0.40;
-
-        // Suspicious keyword density
         score += features[Constants.FEAT_KEYWORD_COUNT] * 0.15;
-
-        // High entropy (> threshold → 0.20 penalty; raw entropy ÷ 5.0 otherwise)
         score += (features[Constants.FEAT_ENTROPY] > Constants.HIGH_ENTROPY_THRESHOLD)
                  ? 0.20
                  : (features[Constants.FEAT_ENTROPY] / 5.0) * 0.20;
-
-        return clamp(score);
+        return Math.min(1.0, score);
     }
 
-    /**
-     * Builds a Weka DenseInstance using the shared dataset header.
-     * The class attribute (index 8) is set to missing as we are predicting it.
-     *
-     * @param features 8-element double array
-     * @return Weka Instance ready for classification
-     */
-    private static Instance buildInstance(double[] features) {
-        // Create instance with 9 slots: 8 features + 1 class attribute
-        Instance instance = new DenseInstance(Constants.FEATURE_COUNT + 1);
-        instance.setDataset(datasetHeader);
-
-        for (int i = 0; i < Constants.FEATURE_COUNT; i++) {
-            instance.setValue(i, features[i]);
-        }
-
-        // Class attribute is missing (to predict)
-        instance.setClassMissing();
-
-        return instance;
-    }
+    // ── Dataset Header Builder ────────────────────────────────────────────
 
     /**
-     * Builds the Weka Instances header (schema) that matches the 8 features.
-     * All 8 features are NUMERIC. Class is NOMINAL: {"legitimate","phishing"}.
-     * This header must match the schema used during model training.
-     *
-     * @return Weka Instances structure with 0 data rows
+     * Builds the Weka Instances header matching the 8 features.
+     * Aligned with URLFeatureExtractor indices.
      */
     private static Instances buildDatasetHeader() {
-        ArrayList<Attribute> attrs = new ArrayList<>();
+        java.util.ArrayList<weka.core.Attribute> attrs = new java.util.ArrayList<>();
 
-        // 8 numeric feature attributes (same names used during training)
-        attrs.add(new Attribute("url_length"));
-        attrs.add(new Attribute("has_https"));
-        attrs.add(new Attribute("has_ip_address"));
-        attrs.add(new Attribute("suspicious_keyword_count"));
-        attrs.add(new Attribute("dot_count"));
-        attrs.add(new Attribute("special_char_count"));
-        attrs.add(new Attribute("entropy"));
-        attrs.add(new Attribute("subdomain_count"));
+        // Must match FEATURE_COUNT indices exactly!
+        attrs.add(new weka.core.Attribute("url_length"));         // 0
+        attrs.add(new weka.core.Attribute("has_https"));          // 1
+        attrs.add(new weka.core.Attribute("has_ip_address"));     // 2
+        attrs.add(new weka.core.Attribute("keyword_count"));      // 3
+        attrs.add(new weka.core.Attribute("dot_count"));          // 4
+        attrs.add(new weka.core.Attribute("special_char_count")); // 5
+        attrs.add(new weka.core.Attribute("entropy"));            // 6
+        attrs.add(new weka.core.Attribute("subdomain_count"));    // 7
 
-        // Nominal class attribute
-        ArrayList<String> classValues = new ArrayList<>();
-        classValues.add("legitimate");
-        classValues.add("phishing");
-        attrs.add(new Attribute("class", classValues));
+        // Class attribute
+        java.util.ArrayList<String> classVals = new java.util.ArrayList<>();
+        classVals.add("legitimate");
+        classVals.add("phishing");
+        attrs.add(new weka.core.Attribute("class", classVals));
 
         Instances header = new Instances("PhishGuardURLs", attrs, 0);
-        header.setClassIndex(Constants.FEATURE_COUNT); // class is the 9th attribute (index 8)
-
+        header.setClassIndex(Constants.FEATURE_COUNT); 
         return header;
     }
 
-    /**
-     * Clamps a score to the range [0.0, 1.0].
-     */
-    private static double clamp(double score) {
-        return Math.max(0.0, Math.min(1.0, score));
-    }
-
-    // ── Public getters ──────────────────────────────────────────────────
-
-    /**
-     * @return true if running without trained model files (heuristic mode)
-     */
-    public static boolean isFallbackMode() {
-        return fallbackMode;
-    }
-
-    /**
-     * @return the shared Weka Instances header (useful for training scripts)
-     */
-    public static Instances getDatasetHeader() {
-        if (datasetHeader == null) {
-            datasetHeader = buildDatasetHeader();
-        }
-        return datasetHeader;
-    }
+    public static boolean isLoaded()       { return loaded; }
+    public static boolean isFallbackMode() { return fallbackMode; }
 }
