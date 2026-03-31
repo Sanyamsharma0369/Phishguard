@@ -100,8 +100,7 @@ public class WebApiController {
 
     private static Object rootDashboard(Request req, Response res) {
         res.type("text/html");
-        try {
-            java.io.InputStream is = WebApiController.class.getResourceAsStream("/dashboard.html");
+        try (java.io.InputStream is = WebApiController.class.getResourceAsStream("/dashboard.html")) {
             if (is != null) return new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
         } catch (Exception ignored) {}
         return "<h1>PhishGuard</h1><p>dashboard.html not found in resources</p>";
