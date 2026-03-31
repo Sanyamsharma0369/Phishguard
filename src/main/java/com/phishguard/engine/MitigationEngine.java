@@ -103,11 +103,14 @@ public final class MitigationEngine {
 
     /**
      * SAFE handler:
-     *   1. Log INFO (no DB incident for safe URLs — keeps incidents table focused)
-     *   2. Print confirmation to console
+     *   1. Save incident to DB (so it appears on the web dashboard KPI)
+     *   2. Log INFO
+     *   3. Print confirmation to console
      */
     private static void handleSafe(RiskScorer scorer) {
         scorer.actionTaken = "ALLOWED";
+        IncidentDAO.saveIncident(scorer);
+
         LogDAO.info("URL_ALLOWED",
             "URL: " + scorer.url + " | Score: " + String.format("%.4f", scorer.finalScore));
 
