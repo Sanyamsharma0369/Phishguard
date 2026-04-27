@@ -13,6 +13,10 @@ public class VirusTotalChecker {
         .getOrDefault("VT_API_KEY", "YOUR_VT_API_KEY_HERE");
     private static final HttpClient HTTP = HttpClient.newHttpClient();
 
+    public static String getApiKey() {
+        return API_KEY;
+    }
+
     public record VTResult(double score, int positives, int total, boolean fromCache) {}
 
     public static VTResult check(String url) {

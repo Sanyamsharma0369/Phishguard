@@ -18,9 +18,13 @@ import spark.Spark;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.Duration;
+import java.net.http.*;
+import java.net.URI;
 import java.util.*;
 import com.phishguard.engine.ExplainabilityEngine;
 import com.phishguard.utils.ThreatIntelCache;
+import com.phishguard.detection.AIModelEngine;
 
 @SuppressWarnings("unchecked")
 public class WebApiController {
@@ -240,6 +244,46 @@ public class WebApiController {
                 ps.executeUpdate();
             }
             return "{\"success\":true}";
+        });
+
+        // ── Layer Health Check API ──────────────────────────────────────────
+        Spark.get("/api/health/layers", (req, res) -> {
+            res.type("application/json");
+            res.header("Access-Control-Allow-Origin", "*");
+
+            Map<String, Object> health = new LinkedHashMap<>();
+
+            // ML
+            health.put("weka_ml", AIModelEngine.isLoaded() ? "✅ Loaded" : "❌ Not loaded");
+
+            // Flask CNN
+            try {
+                HttpRequest r = HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:5000/health"))
+                    .timeout(Duration.ofSeconds(2)).GET().build();
+                int status = HttpClient.newHttpClient()
+                    .send(r, HttpResponse.BodyHandlers.ofString()).statusCode();
+                health.put("flask_cnn", status == 200 ? "✅ Running" : "❌ Error");
+            } catch (Exception e) {
+                health.put("flask_cnn", "❌ Offline");
+            }
+
+            // Database
+            try (java.sql.Connection c = DBConnection.getInstance().getConnection()) {
+                health.put("database", "✅ Connected");
+            } catch (Exception e) {
+                health.put("database", "❌ Disconnected");
+            }
+
+            // Cache
+            var cacheStats = ThreatIntelCache.getStats();
+            health.put("threat_cache", "✅ " + cacheStats.active() + " active entries");
+
+            // VT API Key
+            String actualKey = com.phishguard.utils.VirusTotalChecker.getApiKey(); 
+            health.put("virustotal", (actualKey == null || actualKey.contains("YOUR_")) ? "⚠️ No API key" : "✅ Configured");
+
+            return new Gson().toJson(health);
         });
 
         Spark.delete("/api/processed-emails/clear", (req, res) -> {
