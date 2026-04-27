@@ -111,6 +111,13 @@
             <artifactId>websocket-api</artifactId>
             <version>9.4.48.v20220622</version> <!-- included by spark, but WS annotations need it visible sometimes. Just spark is fine typically, but let's keep it clean -->
         </dependency>
+
+        <!-- ===== WEBSOCKETS (Java-WebSocket) ===== -->
+        <dependency>
+            <groupId>org.java-websocket</groupId>
+            <artifactId>Java-WebSocket</artifactId>
+            <version>1.5.4</version>
+        </dependency>
     </dependencies>
 
     <build>

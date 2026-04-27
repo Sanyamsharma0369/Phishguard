@@ -2,6 +2,7 @@ package com.phishguard.utils;
 
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.*;
+import com.itextpdf.text.pdf.draw.LineSeparator;
 import com.phishguard.database.DBConnection;
 import java.io.*;
 import java.time.LocalDateTime;
@@ -18,7 +19,7 @@ public class ReportGenerator {
     public static byte[] generateReport() throws Exception {
         Document doc = new Document(PageSize.A4, 40, 40, 60, 40);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        PdfWriter writer = PdfWriter.getInstance(doc, out);
+        PdfWriter.getInstance(doc, out);
 
         doc.open();
 

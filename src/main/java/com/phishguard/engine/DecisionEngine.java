@@ -168,6 +168,21 @@ public final class DecisionEngine {
     // ── Batch utility ────────────────────────────────────────────────────
 
     /**
+     * Returns a human-readable confidence label for a given risk score.
+     * Used in the dashboard table, PDF report, and API responses.
+     *
+     * @param score 0.0–1.0 final risk score
+     * @return confidence label string
+     */
+    public static String getConfidence(double score) {
+        if (score >= 0.90) return "Very High Confidence";
+        if (score >= 0.75) return "High Confidence";
+        if (score >= 0.50) return "Medium Confidence";
+        if (score >= 0.25) return "Low Confidence";
+        return "Very Low Confidence";
+    }
+
+    /**
      * FOR UNIT TESTING ONLY.
      * Convenience method: creates a new RiskScorer with just an AI model score
      * and runs the full decision pipeline.

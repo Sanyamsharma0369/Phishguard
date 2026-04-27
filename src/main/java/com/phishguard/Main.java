@@ -32,6 +32,8 @@ public class Main {
             DBConnection db = DBConnection.getInstance();
             db.getConnection();
             System.out.println("[Main] ✓ Database connected");
+            com.phishguard.utils.ThreatIntelCache.purgeExpired();
+            System.out.println("[Cache] Threat Intel Cache initialized.");
         } catch (Exception e) {
             System.err.println("[Main] ✗ Database error: " + e.getMessage());
         }
@@ -43,6 +45,21 @@ public class Main {
                     + AIModelEngine.isFallbackMode() + ")");
         } catch (Exception e) {
             System.err.println("[Main] ✗ AI model error: " + e.getMessage());
+        }
+
+        // ── Start WebSocket Notification Server ──────────────────────────────────
+        try {
+            com.phishguard.websocket.NotificationServer wsServer = com.phishguard.websocket.NotificationServer.getInstance();
+            wsServer.start();
+            System.out.println("[Main] WebSocket server running on ws://localhost:8081");
+
+            // Shutdown hook
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                try { wsServer.stop(); }
+                catch (Exception e) { e.printStackTrace(); }
+            }));
+        } catch (Exception e) {
+            System.err.println("[Main] ✗ WebSocket error: " + e.getMessage());
         }
 
         // Step 4: Start Web API (WebSocketHandler registers itself inside WebApiController)
@@ -81,6 +98,15 @@ public class Main {
         System.out.println("[Main] PhishGuard is running!");
         System.out.println("[Main] Web Dashboard -> http://localhost:8080");
         System.out.println("[Main] Flask CNN API -> http://localhost:5000");
+
+        // ── Start Clipboard Monitor ──────────────────────────────────────────
+        try {
+            com.phishguard.monitor.ClipboardMonitor cm = new com.phishguard.monitor.ClipboardMonitor();
+            cm.start();
+            Runtime.getRuntime().addShutdownHook(new Thread(cm::stop));
+        } catch (Exception e) {
+            System.err.println("[Main] ✗ Clipboard monitor error: " + e.getMessage());
+        }
 
         // Keep main thread alive so Spark (daemon thread) doesn't die
         try {

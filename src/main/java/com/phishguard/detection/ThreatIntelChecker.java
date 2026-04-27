@@ -1,7 +1,7 @@
 package com.phishguard.detection;
 
-import com.phishguard.api.PhishTankAPI;
-import com.phishguard.api.VirusTotalAPI;
+import com.phishguard.utils.PhishTankChecker;
+import com.phishguard.utils.VirusTotalChecker;
 
 /**
  * PhishGuard - ThreatIntelChecker.java
@@ -29,9 +29,7 @@ public final class ThreatIntelChecker {
      * Must be called once at application startup.
      */
     public static void initialize() {
-        PhishTankAPI.initialize();
-        VirusTotalAPI.initialize();
-        System.out.println("[ThreatIntel] Initialized (PhishTank + VirusTotal)");
+        System.out.println("[ThreatIntel] Initialized (PhishTank + VirusTotal with Caching)");
     }
 
     // ── Public API ────────────────────────────────────────────────────────
@@ -50,8 +48,8 @@ public final class ThreatIntelChecker {
     public static double check(String url) {
         if (url == null || url.isBlank()) return 0.0;
 
-        boolean phishTankPositive  = PhishTankAPI.isPhishing(url);
-        double  virusTotalScore    = VirusTotalAPI.getScore(url);
+        boolean phishTankPositive  = PhishTankChecker.check(url).isPhishing();
+        double  virusTotalScore    = VirusTotalChecker.check(url).score();
 
         double combinedScore = 0.0;
         if (phishTankPositive) {
@@ -76,6 +74,6 @@ public final class ThreatIntelChecker {
      * @return true if PhishTank-confirmed phishing
      */
     public static boolean isConfirmedPhishing(String url) {
-        return PhishTankAPI.isPhishing(url);
+        return PhishTankChecker.check(url).isPhishing();
     }
 }

@@ -194,7 +194,9 @@ public class EmailMonitor implements Runnable {
             scorer.finalScore = 1.0;
             scorer.decision = "HIGH_RISK";
             scorer.actionTaken = "BLOCKED";
-            com.phishguard.database.IncidentDAO.save(scorer);
+            com.phishguard.database.IncidentDAO.saveIncident(scorer);
+
+            com.phishguard.websocket.NotificationServer.getInstance().sendThreatAlert(url, email.senderEmail, scorer.finalScore, scorer.decision);
 
             new Thread(() -> com.phishguard.utils.EmailAlerter.sendAlert(
                 "🚨 PhishGuard: HIGH RISK URL Detected!",
@@ -236,6 +238,7 @@ public class EmailMonitor implements Runnable {
                 LogDAO.warning("THREAT_DETECTED", scorer.getSummary());
                 
                 if ("HIGH_RISK".equals(scorer.decision)) {
+                    com.phishguard.websocket.NotificationServer.getInstance().sendThreatAlert(url, email.senderEmail, scorer.finalScore, scorer.decision);
                     new Thread(() -> com.phishguard.utils.EmailAlerter.sendAlert(
                         "🚨 PhishGuard: HIGH RISK URL Detected!",
                         "⚠️ A HIGH RISK phishing URL was detected!\n\n" +
@@ -246,7 +249,11 @@ public class EmailMonitor implements Runnable {
                         "Action taken: BLOCKED\n\n" +
                         "View dashboard: http://localhost:8080"
                     )).start();
+                } else if ("SUSPICIOUS".equals(scorer.decision)) {
+                    com.phishguard.websocket.NotificationServer.getInstance().sendNewIncident(url, scorer.decision, scorer.finalScore);
                 }
+            } else {
+                com.phishguard.websocket.NotificationServer.getInstance().sendNewIncident(url, scorer.decision, scorer.finalScore);
             }
 
             // Apply mitigation (stub in Phase 3, full in Phase 6)

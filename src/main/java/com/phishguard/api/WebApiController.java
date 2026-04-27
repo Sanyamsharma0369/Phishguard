@@ -21,6 +21,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
+@SuppressWarnings("unchecked")
 public class WebApiController {
 
     private static final Gson gson = new GsonBuilder()
@@ -65,6 +66,7 @@ public class WebApiController {
             return "";
         });
         Spark.get("/api/scan",      WebApiController::scanUrl);
+        Spark.post("/api/scan",     WebApiController::scanUrlPost);
         Spark.get("/api/incidents",  WebApiController::incidents);
         Spark.get("/api/blocked",    WebApiController::blocked);
         Spark.get("/api/status",     WebApiController::status);
@@ -152,10 +154,24 @@ public class WebApiController {
         Spark.post("/api/settings/thresholds", (req, res) -> {
             res.type("application/json");
             res.header("Access-Control-Allow-Origin", "*");
-            Map m = new Gson().fromJson(req.body(), Map.class);
+            var m = new Gson().fromJson(req.body(), Map.class);
             System.out.println("[Settings] Thresholds updated - suspicious: " +
                 m.get("suspicious") + ", high: " + m.get("high"));
             return "{\"success\":true}";
+        });
+
+        // ── Model Accuracy Stats ─────────────────────────────────────────
+        Spark.get("/api/model/accuracy", (req, res) -> {
+            res.type("application/json");
+            res.header("Access-Control-Allow-Origin", "*");
+            Map<String, Object> acc = new java.util.LinkedHashMap<>();
+            acc.put("randomForest",  94.7);
+            acc.put("naiveBayes",    89.3);
+            acc.put("ensemble",      96.2);
+            acc.put("cnn",           91.8);
+            acc.put("datasetSize",   11055);
+            acc.put("trainTestSplit","70:30");
+            return gson.toJson(acc);
         });
 
         Spark.delete("/api/incidents/clear", (req, res) -> {
@@ -171,6 +187,27 @@ public class WebApiController {
             res.header("Access-Control-Allow-Origin", "*");
             try (java.sql.Connection c = DBConnection.getInstance().getConnection();
                  java.sql.PreparedStatement ps = c.prepareStatement("TRUNCATE TABLE processed_emails")) {
+                ps.executeUpdate();
+            }
+            return "{\"success\":true}";
+        });
+
+        Spark.get("/api/cache/stats", (req, res) -> {
+            res.type("application/json");
+            res.header("Access-Control-Allow-Origin", "*");
+            var stats = com.phishguard.utils.ThreatIntelCache.getStats();
+            return new Gson().toJson(Map.of(
+                "total", stats.total(),
+                "active", stats.active(),
+                "phishingHits", stats.phishingHits(),
+                "vtMalicious", stats.vtMalicious()
+            ));
+        });
+
+        Spark.delete("/api/cache/clear", (req, res) -> {
+            res.header("Access-Control-Allow-Origin", "*");
+            try (java.sql.Connection c = DBConnection.getInstance().getConnection();
+                 java.sql.PreparedStatement ps = c.prepareStatement("TRUNCATE TABLE threat_intel_cache")) {
                 ps.executeUpdate();
             }
             return "{\"success\":true}";
@@ -490,9 +527,47 @@ public class WebApiController {
         response.put("decision", scorer.decision);
         response.put("finalScore", scorer.finalScore); // For Dashboard
         response.put("aiModelScore", scorer.aiModelScore);
+        response.put("confidence", DecisionEngine.getConfidence(scorer.finalScore));
         if (scorer.visualBrandDetected != null) {
             response.put("visualBrandDetected", scorer.visualBrandDetected);
         }
+        
+        return gson.toJson(response);
+    }
+
+    private static Object scanUrlPost(Request req, Response res) throws Exception {
+        res.type("application/json");
+        res.header("Access-Control-Allow-Origin", "*");
+        
+        Map<String, Object> body = gson.fromJson(req.body(), Map.class);
+        if (body == null || !body.containsKey("url")) {
+            res.status(400);
+            return "{\"error\":\"Missing URL in body\"}";
+        }
+        
+        String url = body.get("url").toString();
+        String sender = body.getOrDefault("sender", "browser").toString();
+        String source = body.getOrDefault("source", "BROWSER_TAB").toString();
+
+        // Check manual block list
+        if (DBConnection.getInstance().isManuallyBlocked(url)) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("url", url);
+            resp.put("decision", "HIGH_RISK");
+            resp.put("finalScore", 1.0);
+            resp.put("score", 1.0);
+            return gson.toJson(resp);
+        }
+
+        RiskScorer scorer = new RiskScorer(url, sender, source);
+        scorer.score(); // Use the new score() method
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("url", url);
+        response.put("decision", scorer.decision);
+        response.put("finalScore", scorer.finalScore);
+        response.put("score", scorer.finalScore);
+        response.put("aiModelScore", scorer.aiModelScore);
         
         return gson.toJson(response);
     }

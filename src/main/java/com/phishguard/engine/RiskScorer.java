@@ -72,6 +72,38 @@ public class RiskScorer {
         this.timestamp    = LocalDateTime.now();
     }
 
+    public RiskScorer(String url, String emailSender) {
+        this(url, emailSender, "System/Manual Scan");
+    }
+
+    /**
+     * Runs the full analysis pipeline for this URL.
+     * Integrates AI model, Threat Intel, and Visual analysis.
+     */
+    public void score() {
+        // Layer 3: AI model score
+        this.aiModelScore = com.phishguard.detection.AIModelEngine.predict(url);
+        
+        // Layer 4: Threat Intel (only if suspicious)
+        if (this.aiModelScore > 0.4) {
+            this.threatIntelScore = com.phishguard.detection.ThreatIntelChecker.check(url);
+        }
+        
+        // Layer 5: Visual analysis
+        try {
+            com.phishguard.detection.VisualAnalyzer.VisualResult vr = com.phishguard.detection.VisualAnalyzer.analyze(url);
+            this.visualScore         = vr.score;
+            this.visualBrandDetected = vr.detectedBrand;
+        } catch (Exception e) {
+            this.visualScore         = 0.0;
+            this.visualBrandDetected = "Unknown";
+        }
+        
+        // Decision & Mitigation
+        com.phishguard.engine.DecisionEngine.decide(this);
+        com.phishguard.engine.MitigationEngine.mitigate(this);
+    }
+
     // ── Core computation ─────────────────────────────────────────────────
 
     /**
