@@ -148,9 +148,6 @@ public class ExplainabilityEngine {
             }
         }
 
-            }
-        }
-
         // ── Domain Age (WHOIS) ───────────────────────────────────────────────
         if (whoisAgeDays != -1) {
             if (whoisAgeDays < 7) {
