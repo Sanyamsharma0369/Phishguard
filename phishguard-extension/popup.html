@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhishGuard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 320px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    font-size: 13px;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #161b22, #1c2128);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #30363d;
+  }
+  .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+  .logo-icon { font-size: 20px; }
+  .status-badge {
+    display: flex; align-items: center; gap: 5px;
+    background: rgba(63,185,80,0.15);
+    border: 1px solid rgba(63,185,80,0.3);
+    color: #3fb950; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: #3fb950;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+  }
+
+  /* Current Tab */
+  .section { padding: 12px 16px; border-bottom: 1px solid #21262d; }
+  .section-title {
+    font-size: 10px; font-weight: 600; color: #8b949e;
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
+  }
+
+  .tab-card {
+    background: #161b22; border-radius: 8px; padding: 12px;
+    border: 1px solid #30363d;
+  }
+  .tab-status { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .tab-status-label {
+    font-size: 14px; font-weight: 700; padding: 2px 8px; border-radius: 4px;
+  }
+  .status-safe    { background: rgba(63,185,80,0.15);  color: #3fb950; }
+  .status-warn    { background: rgba(210,153,34,0.15); color: #d29922; }
+  .status-danger  { background: rgba(248,81,73,0.15);  color: #f85149; }
+  .status-loading { background: rgba(88,166,255,0.15); color: #58a6ff; }
+
+  .tab-url {
+    font-size: 11px; color: #8b949e; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px;
+  }
+  .risk-bar-container { background: #21262d; border-radius: 4px; height: 4px; }
+  .risk-bar { height: 4px; border-radius: 4px; transition: width 0.5s ease; }
+  .risk-score-row {
+    display: flex; justify-content: space-between;
+    margin-top: 5px; font-size: 11px; color: #8b949e;
+  }
+
+  /* Stats */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .stat-card {
+    background: #161b22; border-radius: 8px; padding: 10px 8px;
+    border: 1px solid #30363d; text-align: center;
+  }
+  .stat-number { font-size: 20px; font-weight: 700; line-height: 1; }
+  .stat-label  { font-size: 10px; color: #8b949e; margin-top: 3px; }
+
+  /* Recent Threats */
+  .threat-list { display: grid; gap: 6px; }
+  .threat-item {
+    background: #161b22; border: 1px solid rgba(248,81,73,0.2);
+    border-radius: 6px; padding: 8px 10px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .threat-url { font-size: 11px; color: #ccc; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .threat-badge {
+    font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 3px;
+    background: rgba(248,81,73,0.15); color: #f85149; flex-shrink: 0; margin-left: 6px;
+  }
+  .threat-badge.warn {
+    background: rgba(210,153,34,0.15); color: #d29922;
+  }
+  .no-threats { text-align: center; color: #3fb950; padding: 8px; font-size: 12px; }
+
+  /* Backend status */
+  .backend-row {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; color: #8b949e; padding: 4px 0;
+  }
+
+  /* Buttons */
+  .btn-row { padding: 12px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .btn {
+    padding: 9px; border-radius: 6px; font-size: 12px; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.2s;
+  }
+  .btn-primary {
+    background: #238636; color: #fff;
+  }
+  .btn-primary:hover { background: #2ea043; }
+  .btn-secondary {
+    background: #21262d; color: #ccc; border: 1px solid #30363d;
+  }
+  .btn-secondary:hover { background: #30363d; }
+
+  .scanning-text { font-size: 11px; color: #58a6ff; animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">
+    <span class="logo-icon">🛡️</span>
+    PhishGuard
+  </div>
+  <div class="status-badge" id="main-status-badge">
+    <div class="status-dot"></div>
+    ACTIVE
+  </div>
+</div>
+
+<!-- Current Tab -->
+<div class="section">
+  <div class="section-title">Current Tab</div>
+  <div class="tab-card">
+    <div class="tab-status">
+      <span class="tab-status-label status-loading" id="tab-status-label">
+        ⏳ Scanning...
+      </span>
+      <span class="scanning-text" id="scanning-text">analyzing</span>
+    </div>
+    <div class="tab-url" id="tab-url">Detecting current tab...</div>
+    <div class="risk-bar-container">
+      <div class="risk-bar" id="risk-bar" style="width:0%;background:#58a6ff"></div>
+    </div>
+    <div class="risk-score-row">
+      <span>Risk Score</span>
+      <span id="risk-score-val">—</span>
+    </div>
+  </div>
+</div>
+
+<!-- Today's Stats -->
+<div class="section">
+  <div class="section-title">Today's Protection</div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-number" id="stat-blocked" style="color:#f85149">—</div>
+      <div class="stat-label">🔴 Blocked</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" id="stat-suspicious" style="color:#d29922">—</div>
+      <div class="stat-label">🟡 Suspicious</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" id="stat-safe" style="color:#3fb950">—</div>
+      <div class="stat-label">✅ Safe</div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Threats -->
+<div class="section">
+  <div class="section-title">Recent Threats</div>
+  <div class="threat-list" id="threat-list">
+    <div class="no-threats">✅ No recent threats</div>
+  </div>
+</div>
+
+<!-- Backend Status -->
+<div class="section">
+  <div class="section-title">System Status</div>
+  <div class="backend-row">
+    <span>🤖 AI Engine</span>
+    <span id="sys-api" style="color:#8b949e">Checking...</span>
+  </div>
+  <div class="backend-row">
+    <span>🧠 CNN Model</span>
+    <span id="sys-cnn" style="color:#8b949e">Checking...</span>
+  </div>
+  <div class="backend-row">
+    <span>🛡️ URLs Blocked</span>
+    <span id="sys-blocked-total" style="color:#f85149">—</span>
+  </div>
+</div>
+
+<!-- Buttons -->
+<div class="btn-row">
+  <button class="btn btn-primary" id="scan-btn" onclick="scanCurrentTab()">
+    🔍 Scan Page
+  </button>
+  <button class="btn btn-secondary" onclick="openDashboard()">
+    📊 Dashboard
+  </button>
+</div>
+
+<script>
+const API = 'http://localhost:8080';
+
+// ── Open Dashboard ────────────────────────────────────────────────────────────
+function openDashboard() {
+  chrome.tabs.create({ url: API });
+}
+
+// ── Get current tab URL and scan it ──────────────────────────────────────────
+async function scanCurrentTab() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab || !tab.url) return;
+
+  const url = tab.url;
+  document.getElementById('tab-url').textContent = url.length > 45 ? 
+    url.substring(0, 45) + '...' : url;
+  document.getElementById('tab-status-label').className = 
+    'tab-status-label status-loading';
+  document.getElementById('tab-status-label').textContent = '⏳ Scanning...';
+  document.getElementById('scanning-text').style.display = 'inline';
+  document.getElementById('scan-btn').textContent = '⏳ Scanning...';
+  document.getElementById('scan-btn').disabled = true;
+
+  try {
+    const res = await fetch(`${API}/api/scan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, source: 'EXTENSION_POPUP' })
+    });
+    const data = await res.json();
+    displayScanResult(data, url);
+  } catch (e) {
+    document.getElementById('tab-status-label').className = 
+      'tab-status-label status-warn';
+    document.getElementById('tab-status-label').textContent = '⚠️ API Offline';
+    document.getElementById('scanning-text').style.display = 'none';
+  } finally {
+    document.getElementById('scan-btn').textContent = '🔍 Scan Page';
+    document.getElementById('scan-btn').disabled = false;
+  }
+}
+
+function displayScanResult(data, url) {
+  const score   = data.riskScore || 0;
+  const decision = data.decision || 'SAFE';
+  document.getElementById('scanning-text').style.display = 'none';
+  document.getElementById('tab-url').textContent = 
+    url.length > 45 ? url.substring(0, 45) + '...' : url;
+  document.getElementById('risk-score-val').textContent = score.toFixed(4);
+
+  const bar = document.getElementById('risk-bar');
+  bar.style.width = (score * 100) + '%';
+
+  const label = document.getElementById('tab-status-label');
+  if (decision === 'HIGH_RISK') {
+    label.className = 'tab-status-label status-danger';
+    label.textContent = '🚨 HIGH RISK';
+    bar.style.background = '#f85149';
+  } else if (decision === 'SUSPICIOUS') {
+    label.className = 'tab-status-label status-warn';
+    label.textContent = '⚠️ SUSPICIOUS';
+    bar.style.background = '#d29922';
+  } else {
+    label.className = 'tab-status-label status-safe';
+    label.textContent = '✅ SAFE';
+    bar.style.background = '#3fb950';
+  }
+}
+
+// ── Load Stats ────────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const data = await fetch(`${API}/api/stats`).then(r => r.json());
+    document.getElementById('stat-blocked').textContent  = data.blocked  || 0;
+    document.getElementById('stat-suspicious').textContent = data.suspicious || 0;
+    document.getElementById('stat-safe').textContent     = data.safe     || 0;
+    document.getElementById('sys-blocked-total').textContent = 
+      (data.blocked || 0) + ' total';
+  } catch (e) {}
+}
+
+// ── Load Recent Threats ───────────────────────────────────────────────────────
+async function loadRecentThreats() {
+  try {
+    const data = await fetch(`${API}/api/incidents?limit=3`).then(r => r.json());
+    const threats = data.filter(i => 
+      i.decision === 'HIGH_RISK' || i.decision === 'SUSPICIOUS');
+
+    const list = document.getElementById('threat-list');
+    if (threats.length === 0) {
+      list.innerHTML = '<div class="no-threats">✅ No recent threats</div>';
+      return;
+    }
+
+    list.innerHTML = threats.map(t => {
+      let domain = t.url || '';
+      try { domain = new URL(t.url).hostname; } catch(e) {}
+      const isHigh = t.decision === 'HIGH_RISK';
+      return `<div class="threat-item">
+        <span class="threat-url">${domain}</span>
+        <span class="threat-badge ${isHigh ? '' : 'warn'}">
+          ${isHigh ? 'HIGH RISK' : 'SUSPICIOUS'}
+        </span>
+      </div>`;
+    }).join('');
+  } catch(e) {}
+}
+
+// ── Check System Health ───────────────────────────────────────────────────────
+async function checkSystem() {
+  try {
+    const health = await fetch(`${API}/api/health/layers`).then(r => r.json());
+    document.getElementById('sys-api').textContent = '✅ Running';
+    document.getElementById('sys-api').style.color = '#3fb950';
+
+    const cnn = health.flask_cnn || '';
+    document.getElementById('sys-cnn').textContent = 
+      cnn.includes('✅') ? '✅ Running' : '❌ Offline';
+    document.getElementById('sys-cnn').style.color = 
+      cnn.includes('✅') ? '#3fb950' : '#f85149';
+  } catch (e) {
+    document.getElementById('sys-api').textContent  = '❌ Offline';
+    document.getElementById('sys-api').style.color  = '#f85149';
+    document.getElementById('sys-cnn').textContent  = '❌ Offline';
+    document.getElementById('sys-cnn').style.color  = '#f85149';
+
+    // Update main badge
+    document.getElementById('main-status-badge').style.background = 
+      'rgba(248,81,73,0.15)';
+    document.getElementById('main-status-badge').style.color = '#f85149';
+    document.getElementById('main-status-badge').style.borderColor = 
+      'rgba(248,81,73,0.3)';
+    document.getElementById('main-status-badge').innerHTML = 
+      '<div style="width:7px;height:7px;border-radius:50%;background:#f85149"></div> OFFLINE';
+  }
+}
+
+// ── Auto-scan current tab on popup open ──────────────────────────────────────
+async function autoScanCurrentTab() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab && tab.url && tab.url.startsWith('http')) {
+    const url = tab.url;
+    document.getElementById('tab-url').textContent = 
+      url.length > 45 ? url.substring(0, 45) + '...' : url;
+
+    try {
+      const res = await fetch(`${API}/api/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, source: 'EXTENSION_POPUP_AUTO' })
+      });
+      const data = await res.json();
+      displayScanResult(data, url);
+    } catch(e) {
+      document.getElementById('tab-status-label').className = 
+        'tab-status-label status-warn';
+      document.getElementById('tab-status-label').textContent = '⚠️ Backend Offline';
+      document.getElementById('scanning-text').style.display = 'none';
+    }
+  } else {
+    document.getElementById('tab-status-label').className = 
+      'tab-status-label status-safe';
+    document.getElementById('tab-status-label').textContent = '— Browser Page';
+    document.getElementById('scanning-text').style.display = 'none';
+    document.getElementById('tab-url').textContent = 
+      'Chrome internal page (not scanned)';
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+checkSystem();
+loadStats();
+loadRecentThreats();
+autoScanCurrentTab();
+</script>
+</body>
+</html>
