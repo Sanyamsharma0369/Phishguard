@@ -4,22 +4,14 @@ import com.phishguard.utils.ConfigLoader;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
  * PhishGuard - DBConnection.java
  * -------------------------------------------------
  * Singleton JDBC connection to MySQL 8.0.
- *
- * Usage:
- *   Connection conn = DBConnection.getInstance().getConnection();
- *
- * The connection is lazily initialized on the first call to getConnection().
- * If the connection drops, getConnection() will automatically reconnect.
- *
- * Thread safety: The singleton itself is thread-safe (double-checked locking).
- * For multi-threaded use of the connection, callers must synchronize externally
- * or use a connection pool (future enhancement).
  */
 public class DBConnection {
 
@@ -35,7 +27,6 @@ public class DBConnection {
 
     /**
      * Returns the singleton DBConnection manager.
-     * Thread-safe via double-checked locking.
      */
     public static DBConnection getInstance() {
         if (instance == null) {
@@ -50,16 +41,8 @@ public class DBConnection {
 
     // ── Connection management ──────────────────────────────────────────
 
-    /**
-     * Returns a live JDBC Connection to the phishguard database.
-     * Connects on first call; reconnects automatically if the connection is lost.
-     *
-     * @return active JDBC Connection
-     * @throws RuntimeException if unable to establish a connection
-     */
     public Connection getConnection() {
         try {
-            // Reconnect if closed or null
             if (connection == null || connection.isClosed()) {
                 connect();
             }
@@ -70,46 +53,22 @@ public class DBConnection {
         return connection;
     }
 
-    /**
-     * Performs the actual JDBC connection using settings from ConfigLoader.
-     * Prints a confirmation message on success.
-     *
-     * @throws RuntimeException if the JDBC connection cannot be established
-     */
     private void connect() {
         ConfigLoader cfg = ConfigLoader.getInstance();
-
         String url      = cfg.get("db.url",      "jdbc:mysql://localhost:3306/phishguard");
         String user     = cfg.get("db.user",     "root");
         String password = cfg.get("db.password", "");
 
         try {
-            // Explicitly load the MySQL JDBC driver (required in some environments)
             Class.forName("com.mysql.cj.jdbc.Driver");
-
             connection = DriverManager.getConnection(url, user, password);
             connection.setAutoCommit(true);
-
             System.out.println("[DB] Connected to MySQL: " + url.split("\\?")[0]);
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(
-                "[DB] FATAL: MySQL JDBC driver not found. " +
-                "Ensure mysql-connector-j is in your classpath.", e
-            );
-        } catch (SQLException e) {
-            throw new RuntimeException(
-                "[DB] FATAL: Cannot connect to database at '" + url + "'\n" +
-                "   → Check your db.url, db.user, db.password in config.properties\n" +
-                "   → Ensure MySQL is running and the 'phishguard' database exists (run schema.sql)\n" +
-                "   → SQL Error: " + e.getMessage(), e
-            );
+        } catch (Exception e) {
+            throw new RuntimeException("[DB] FATAL: Cannot connect to database", e);
         }
     }
 
-    /**
-     * Closes the active JDBC connection.
-     * Should be called on application shutdown.
-     */
     public void close() {
         if (connection != null) {
             try {
@@ -123,14 +82,148 @@ public class DBConnection {
         }
     }
 
-    /**
-     * @return true if the connection is currently open and valid
-     */
     public boolean isConnected() {
         try {
             return connection != null && !connection.isClosed() && connection.isValid(2);
         } catch (SQLException e) {
             return false;
         }
+    }
+
+    // ── Whitelist Management ─────────────────────────────────────────────
+
+    public String getAllWhitelist() {
+        String sql = "SELECT domain, reason, added_at FROM whitelist ORDER BY added_at DESC";
+        StringBuilder json = new StringBuilder("[");
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            boolean first = true;
+            while (rs.next()) {
+                if (!first) json.append(",");
+                json.append(String.format(
+                    "{\"domain\":\"%s\",\"reason\":\"%s\",\"addedAt\":\"%s\"}",
+                    rs.getString("domain"),
+                    rs.getString("reason"),
+                    rs.getString("added_at")
+                ));
+                first = false;
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return json.append("]").toString();
+    }
+
+    public void addToWhitelist(String domain, String reason) {
+        String sql = "INSERT IGNORE INTO whitelist (domain, reason) VALUES (?, ?)";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, domain);
+            ps.setString(2, reason);
+            ps.executeUpdate();
+            System.out.println("[Whitelist] Added: " + domain);
+        } catch (Exception e) { e.printStackTrace(); }
+    }
+
+    public void removeFromWhitelist(String domain) {
+        String sql = "DELETE FROM whitelist WHERE domain = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, domain);
+            ps.executeUpdate();
+            System.out.println("[Whitelist] Removed: " + domain);
+        } catch (Exception e) { e.printStackTrace(); }
+    }
+
+    public boolean isWhitelisted(String url) {
+        if (url == null) return false;
+        try {
+            String domain = url.replaceAll("https?://", "")
+                               .replaceAll("www\\.", "")
+                               .split("/")[0].toLowerCase();
+            String sql = "SELECT 1 FROM whitelist WHERE ? LIKE CONCAT('%', domain)";
+            try (Connection conn = getConnection();
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, domain);
+                return ps.executeQuery().next();
+            }
+        } catch (Exception e) { return false; }
+    }
+
+    // ── Manual Blocks ─────────────────────────────────────────────────────
+
+    public String getAllManualBlocks() {
+        StringBuilder json = new StringBuilder("[");
+        String sql = "SELECT domain, reason, added_at FROM manual_blocks ORDER BY added_at DESC";
+        try (Connection c = getConnection(); PreparedStatement ps = c.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+            boolean first = true;
+            while (rs.next()) {
+                if (!first) json.append(",");
+                json.append(String.format("{\"domain\":\"%s\",\"reason\":\"%s\",\"addedAt\":\"%s\"}",
+                    rs.getString("domain"), rs.getString("reason"), rs.getString("added_at")));
+                first = false;
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return json.append("]").toString();
+    }
+
+    public void addManualBlock(String domain, String reason) {
+        String sql = "INSERT IGNORE INTO manual_blocks (domain, reason) VALUES (?, ?)";
+        try (Connection c = getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, domain); ps.setString(2, reason);
+            ps.executeUpdate();
+            System.out.println("[ManualBlock] Blocked: " + domain);
+        } catch (Exception e) { e.printStackTrace(); }
+    }
+
+    public void removeManualBlock(String domain) {
+        String sql = "DELETE FROM manual_blocks WHERE domain = ?";
+        try (Connection c = getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, domain);
+            ps.executeUpdate();
+        } catch (Exception e) { e.printStackTrace(); }
+    }
+
+    public boolean isManuallyBlocked(String url) {
+        if (url == null) return false;
+        try {
+            String domain = url.replaceAll("https?://", "").replaceAll("www\\.", "").split("/")[0].toLowerCase();
+            String sql = "SELECT 1 FROM manual_blocks WHERE ? LIKE CONCAT('%', domain)";
+            try (Connection c = getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+                ps.setString(1, domain);
+                return ps.executeQuery().next();
+            }
+        } catch (Exception e) { return false; }
+    }
+
+    public java.util.Map<String, Object> getStats() {
+        java.util.Map<String, Object> s = new java.util.LinkedHashMap<>();
+        try {
+            s.put("totalIncidents", com.phishguard.database.IncidentDAO.getTotalIncidents());
+            int threats = com.phishguard.database.IncidentDAO.getIncidentsByDecision("HIGH_RISK") + 
+                          com.phishguard.database.IncidentDAO.getIncidentsByDecision("SUSPICIOUS");
+            s.put("threats", threats);
+            s.put("blocked", com.phishguard.database.IncidentDAO.getIncidentsByDecision("HIGH_RISK"));
+            s.put("avgRisk", com.phishguard.database.IncidentDAO.getAverageRiskScore());
+            s.put("safe", com.phishguard.database.IncidentDAO.getIncidentsByDecision("SAFE"));
+        } catch (Exception e) {}
+        return s;
+    }
+
+    public java.util.List<java.util.Map<String,Object>> getRecentIncidentsForReport(int limit) {
+        var list = new java.util.ArrayList<java.util.Map<String,Object>>();
+        String sql = "SELECT url, sender, risk_score, decision FROM incidents ORDER BY created_at DESC LIMIT ?";
+        try (Connection c = getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, limit);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                var m = new java.util.LinkedHashMap<String,Object>();
+                m.put("url", rs.getString("url"));
+                m.put("sender", rs.getString("sender") != null ? rs.getString("sender") : "—");
+                m.put("riskScore", String.format("%.4f", rs.getDouble("risk_score")));
+                m.put("decision", rs.getString("decision"));
+                list.add(m);
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return list;
     }
 }

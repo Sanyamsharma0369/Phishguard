@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializer;
+import com.phishguard.database.DBConnection;
 import com.phishguard.database.IncidentDAO;
 import com.phishguard.detection.AIModelEngine;
 import com.phishguard.detection.ThreatIntelChecker;
@@ -56,12 +57,124 @@ public class WebApiController {
         Spark.get("/",               WebApiController::rootDashboard);
         Spark.get("/api/dashboard",  WebApiController::dashboard);
         Spark.get("/api/stats",      WebApiController::stats);
+        
+        // Extension options preflight
+        Spark.options("/api/scan", (req, res) -> {
+            res.header("Access-Control-Allow-Origin", "*");
+            res.header("Access-Control-Allow-Methods", "GET");
+            return "";
+        });
         Spark.get("/api/scan",      WebApiController::scanUrl);
         Spark.get("/api/incidents",  WebApiController::incidents);
         Spark.get("/api/blocked",    WebApiController::blocked);
         Spark.get("/api/status",     WebApiController::status);
         Spark.get("/api/quarantine", WebApiController::quarantine);
         Spark.get("/api/flask-status", WebApiController::flaskStatus);
+        
+        // Whitelist routes
+        Spark.get("/api/whitelist", (req, res) -> {
+            res.type("application/json");
+            return DBConnection.getInstance().getAllWhitelist();
+        });
+        
+        Spark.post("/api/whitelist", (req, res) -> {
+            res.type("application/json");
+            Map<String, Object> body = gson.fromJson(req.body(), Map.class);
+            String domain = body.get("domain").toString();
+            String reason = body.getOrDefault("reason", "Dashboard whitelist").toString();
+            // clean domain
+            domain = domain.replaceAll("https?://", "").replaceAll("www\\.", "").split("/")[0].trim();
+            DBConnection.getInstance().addToWhitelist(domain, reason);
+            return "{\"success\":true,\"domain\":\"" + domain + "\"}";
+        });
+        
+        Spark.delete("/api/whitelist/:domain", (req, res) -> {
+            res.type("application/json");
+            String domain = req.params(":domain");
+            DBConnection.getInstance().removeFromWhitelist(domain);
+            return "{\"success\":true}";
+        });
+        
+        Spark.options("/api/whitelist", (req, res) -> {
+            res.header("Access-Control-Allow-Origin", "*");
+            res.header("Access-Control-Allow-Methods", "GET,POST,DELETE");
+            res.header("Access-Control-Allow-Headers", "Content-Type");
+            return "";
+        });
+
+        // Manual block routes
+        Spark.get("/api/manual-blocks", (req, res) -> {
+            res.type("application/json");
+            return DBConnection.getInstance().getAllManualBlocks();
+        });
+        
+        Spark.post("/api/manual-blocks", (req, res) -> {
+            res.type("application/json");
+            Map<String, Object> body = gson.fromJson(req.body(), Map.class);
+            String domain = body.get("domain").toString();
+            String reason = body.getOrDefault("reason", "Manually blocked").toString();
+            domain = domain.replaceAll("https?://", "").replaceAll("www\\.", "").split("/")[0].trim();
+            DBConnection.getInstance().addManualBlock(domain, reason);
+            return "{\"success\":true,\"domain\":\"" + domain + "\"}";
+        });
+        
+        Spark.delete("/api/manual-blocks/:domain", (req, res) -> {
+            res.type("application/json");
+            DBConnection.getInstance().removeManualBlock(req.params(":domain"));
+            return "{\"success\":true}";
+        });
+        
+        Spark.options("/api/manual-blocks", (req, res) -> {
+            res.header("Access-Control-Allow-Origin", "*");
+            res.header("Access-Control-Allow-Methods", "GET,POST,DELETE");
+            res.header("Access-Control-Allow-Headers", "Content-Type");
+            return "";
+        });
+
+        // Report & Settings routes
+        Spark.get("/api/report/pdf", (req, res) -> {
+            try {
+                byte[] pdf = com.phishguard.utils.ReportGenerator.generateReport();
+                res.raw().setContentType("application/pdf");
+                res.raw().setHeader("Content-Disposition",
+                    "attachment; filename=phishguard-report-" +
+                    java.time.LocalDate.now() + ".pdf");
+                res.raw().setContentLength(pdf.length);
+                res.raw().getOutputStream().write(pdf);
+                res.raw().getOutputStream().flush();
+                return res.raw();
+            } catch (Exception e) {
+                res.status(500);
+                return "{\"error\":\"" + e.getMessage() + "\"}";
+            }
+        });
+
+        Spark.post("/api/settings/thresholds", (req, res) -> {
+            res.type("application/json");
+            res.header("Access-Control-Allow-Origin", "*");
+            Map m = new Gson().fromJson(req.body(), Map.class);
+            System.out.println("[Settings] Thresholds updated - suspicious: " +
+                m.get("suspicious") + ", high: " + m.get("high"));
+            return "{\"success\":true}";
+        });
+
+        Spark.delete("/api/incidents/clear", (req, res) -> {
+            res.header("Access-Control-Allow-Origin", "*");
+            try (java.sql.Connection c = DBConnection.getInstance().getConnection();
+                 java.sql.PreparedStatement ps = c.prepareStatement("TRUNCATE TABLE incidents")) {
+                ps.executeUpdate();
+            }
+            return "{\"success\":true}";
+        });
+
+        Spark.delete("/api/processed-emails/clear", (req, res) -> {
+            res.header("Access-Control-Allow-Origin", "*");
+            try (java.sql.Connection c = DBConnection.getInstance().getConnection();
+                 java.sql.PreparedStatement ps = c.prepareStatement("TRUNCATE TABLE processed_emails")) {
+                ps.executeUpdate();
+            }
+            return "{\"success\":true}";
+        });
 
         Spark.awaitInitialization();
         System.out.println("[WebAPI] Server running at http://localhost:8080");
@@ -334,6 +447,8 @@ public class WebApiController {
 
     private static Object scanUrl(Request req, Response res) throws Exception {
         res.type("application/json");
+        res.header("Access-Control-Allow-Origin", "*");
+        res.header("Access-Control-Allow-Methods", "GET");
         String url = req.queryParams("url");
         if (url == null || url.isEmpty()) {
             res.status(400);
@@ -341,6 +456,18 @@ public class WebApiController {
             err.put("error", "Missing URL parameter");
             return gson.toJson(err);
         }
+
+        // 1. Check manual block list FIRST
+        if (DBConnection.getInstance().isManuallyBlocked(url)) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("url", url);
+            response.put("score", 1.0);
+            response.put("decision", "HIGH_RISK");
+            response.put("finalScore", 1.0);
+            response.put("actionTaken", "BLOCKED");
+            return gson.toJson(response);
+        }
+
         RiskScorer scorer = new RiskScorer(url, "web-scan", "Web Scanner");
         scorer.aiModelScore = AIModelEngine.predict(url);
         if (scorer.aiModelScore > 0.4) {
@@ -356,7 +483,18 @@ public class WebApiController {
         }
         DecisionEngine.decide(scorer);
         MitigationEngine.mitigate(scorer);
-        return gson.toJson(scorer);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("url", url);
+        response.put("score", scorer.finalScore); // For Chrome Extension
+        response.put("decision", scorer.decision);
+        response.put("finalScore", scorer.finalScore); // For Dashboard
+        response.put("aiModelScore", scorer.aiModelScore);
+        if (scorer.visualBrandDetected != null) {
+            response.put("visualBrandDetected", scorer.visualBrandDetected);
+        }
+        
+        return gson.toJson(response);
     }
 
     private static Object incidents(Request req, Response res) throws Exception {

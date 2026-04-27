@@ -13,6 +13,11 @@ import jakarta.mail.Message;
 import jakarta.mail.Session;
 import jakarta.mail.Store;
 import jakarta.mail.search.FlagTerm;
+import com.phishguard.database.DBConnection;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 
 import java.util.List;
 import java.util.Properties;
@@ -69,7 +74,7 @@ public class EmailMonitor implements Runnable {
                 // ── Connect via IMAP ──────────────────────────────────
                 store = connectToIMAP();
                 inbox = store.getFolder(Constants.MAIL_FOLDER_INBOX);
-                inbox.open(Folder.READ_ONLY);
+                inbox.open(Folder.READ_WRITE); // Need write access to mark as SEEN
 
                 // ── Search for unread messages ─────────────────────────
                 Message[] unseen = inbox.search(
@@ -81,7 +86,25 @@ public class EmailMonitor implements Runnable {
                 for (Message message : unseen) {
                     if (!running) break;
                     try {
+                        // Get unique Message-ID header
+                        String[] msgIdHeader = message.getHeader("Message-ID");
+                        String messageId = (msgIdHeader != null && msgIdHeader.length > 0)
+                                ? msgIdHeader[0].trim()
+                                : message.getSubject() + "_" + message.getSentDate();
+
+                        // SKIP if already processed
+                        if (isAlreadyProcessed(messageId)) {
+                            continue;
+                        }
+
                         processEmail(message);
+
+                        // After successful processing, mark as done in DB
+                        markAsProcessed(messageId);
+
+                        // Also mark as READ in Gmail
+                        message.setFlag(Flags.Flag.SEEN, true);
+
                         synchronized (lock) { emailsProcessed++; }
                     } catch (Exception e) {
                         System.err.println("[EmailMonitor] Error processing individual email: "
@@ -164,6 +187,35 @@ public class EmailMonitor implements Runnable {
      * @param email  the parsed email that contained this URL
      */
     private void processURL(String url, EmailParser.ParsedEmail email) {
+        // 1. Check manual block list FIRST
+        if (DBConnection.getInstance().isManuallyBlocked(url)) {
+            System.out.println("[ManualBlock] 🚫 BLOCKED (manual): " + url);
+            RiskScorer scorer = new RiskScorer(url, email.senderEmail, email.subject);
+            scorer.finalScore = 1.0;
+            scorer.decision = "HIGH_RISK";
+            scorer.actionTaken = "BLOCKED";
+            com.phishguard.database.IncidentDAO.save(scorer);
+
+            new Thread(() -> com.phishguard.utils.EmailAlerter.sendAlert(
+                "🚨 PhishGuard: HIGH RISK URL Detected!",
+                "⚠️ A HIGH RISK phishing URL was detected!\n\n" +
+                "URL: " + url + "\n" +
+                "Sender: " + email.senderEmail + "\n" +
+                "Risk Score: " + String.format("%.4f", scorer.finalScore) + "\n" +
+                "Time: " + java.time.LocalDateTime.now() + "\n\n" +
+                "Action taken: BLOCKED\n\n" +
+                "View dashboard: http://localhost:8080"
+            )).start();
+
+            return;
+        }
+
+        // 2. Skip whitelisted URLs entirely
+        if (DBConnection.getInstance().isWhitelisted(url)) {
+            System.out.println("[Whitelist] Skipping safe domain: " + url);
+            return;
+        }
+
         System.out.println("[EmailMonitor] Analyzing: " + url);
 
         try {
@@ -182,6 +234,19 @@ public class EmailMonitor implements Runnable {
             if (!Constants.DECISION_SAFE.equals(scorer.decision)) {
                 synchronized (lock) { threatsFound++; }
                 LogDAO.warning("THREAT_DETECTED", scorer.getSummary());
+                
+                if ("HIGH_RISK".equals(scorer.decision)) {
+                    new Thread(() -> com.phishguard.utils.EmailAlerter.sendAlert(
+                        "🚨 PhishGuard: HIGH RISK URL Detected!",
+                        "⚠️ A HIGH RISK phishing URL was detected!\n\n" +
+                        "URL: " + url + "\n" +
+                        "Sender: " + email.senderEmail + "\n" +
+                        "Risk Score: " + String.format("%.4f", scorer.finalScore) + "\n" +
+                        "Time: " + java.time.LocalDateTime.now() + "\n\n" +
+                        "Action taken: BLOCKED\n\n" +
+                        "View dashboard: http://localhost:8080"
+                    )).start();
+                }
             }
 
             // Apply mitigation (stub in Phase 3, full in Phase 6)
@@ -268,5 +333,32 @@ public class EmailMonitor implements Runnable {
         try {
             if (store != null && store.isConnected()) store.close();
         } catch (Exception ignored) {}
+    }
+
+    // ── Deduplication Helpers ─────────────────────────────────────────────
+
+    private boolean isAlreadyProcessed(String messageId) {
+        String sql = "SELECT 1 FROM processed_emails WHERE message_id = ?";
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, messageId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (Exception e) {
+            // If DB error, process it anyway (safe default)
+            return false;
+        }
+    }
+
+    private void markAsProcessed(String messageId) {
+        String sql = "INSERT IGNORE INTO processed_emails (message_id) VALUES (?)";
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, messageId);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            System.err.println("[EmailMonitor] Could not mark email as processed: " + e.getMessage());
+        }
     }
 }

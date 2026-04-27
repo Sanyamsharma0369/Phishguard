@@ -2,7 +2,6 @@ package com.phishguard.detection;
 
 import com.phishguard.utils.Constants;
 import weka.classifiers.Classifier;
-import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.trees.RandomForest;
 import weka.core.DenseInstance;
 import weka.core.Instance;

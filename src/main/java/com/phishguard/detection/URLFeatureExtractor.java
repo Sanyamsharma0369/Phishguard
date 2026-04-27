@@ -9,6 +9,7 @@ import java.io.InputStreamReader;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -41,6 +42,21 @@ public final class URLFeatureExtractor {
     // ── Loaded phishing keywords ────────────────────────────────────────
     private static final List<String> KEYWORDS = new ArrayList<>();
 
+    // ── Trusted Whitelist (Zeroes out risk for these domains) ───────────
+    private static final Set<String> TRUSTED_DOMAINS = Set.of(
+            // Google
+            "google.com", "gmail.com", "accounts.google.com", "myaccount.google.com",
+            // Meta / Instagram / Facebook
+            "instagram.com", "mail.instagram.com", "cdninstagram.com",
+            "facebook.com", "fbcdn.net", "xx.fbcdn.net",
+            // Email tracking (legit newsletter services)
+            "pstmrk.it", "postmark.com",
+            // Microsoft
+            "microsoft.com", "outlook.com",
+            // Common CDNs
+            "cursor.com"
+    );
+
     // ── Static initializer: load keywords once ──────────────────────────
     static {
         loadKeywords();
@@ -52,15 +68,41 @@ public final class URLFeatureExtractor {
 
     /**
      * Extracts and normalizes 8 features from the given URL.
+     * Incorporates a whitelist check to reduce false positives for trusted domains.
      *
-     * @param url raw URL string (e.g., "http://paypal-secure.xyz/login")
-     * @return double[8] feature vector, all zeros if url is null/empty
+     * @param url raw URL string
+     * @return double[8] feature vector
      */
     public static double[] extract(String url) {
+        if (url == null || url.isBlank()) {
+            return new double[Constants.FEATURE_COUNT];
+        }
+
+        String domain = extractHost(url);
+        if (domain != null) {
+            domain = domain.toLowerCase();
+            final String finalDomain = domain;
+            // Check if domain or any parent domain is trusted
+            if (TRUSTED_DOMAINS.stream().anyMatch(td -> finalDomain.equals(td) || finalDomain.endsWith("." + td))) {
+                double[] features = extractFeatures(url);
+                // Zero out entropy and subdomain count for trusted domains to avoid false positives
+                features[Constants.FEAT_ENTROPY]         = 0.0; // index 6
+                features[Constants.FEAT_SUBDOMAIN_COUNT] = 0.0; // index 7
+                features[Constants.FEAT_KEYWORD_COUNT]   = 0.0; // index 3
+                return features;
+            }
+        }
+
+        return extractFeatures(url);
+    }
+
+    /**
+     * Core extraction logic (formerly extract).
+     */
+    private static double[] extractFeatures(String url) {
         double[] features = new double[Constants.FEATURE_COUNT];  // defaults to 0.0
 
         if (url == null || url.isBlank()) {
-            System.err.println("[URLFeature] Warning: null or empty URL supplied.");
             return features;
         }
 

@@ -171,6 +171,10 @@ tr:hover td{background:var(--accent-glow)}
     <button class="nav-link active" onclick="go('dashboard',this)">Dashboard</button>
     <button class="nav-link" onclick="go('incidents',this)">All Incidents</button>
     <button class="nav-link" onclick="go('blocked',this)">Blocked</button>
+    <button class="nav-link" onclick="go('whitelist',this)">Whitelist</button>
+    <button class="nav-link" onclick="go('blockmanager',this)">Block Manager</button>
+    <button class="nav-link" onclick="go('analytics',this)">📊 Analytics</button>
+    <button class="nav-link" onclick="go('settings',this)">⚙️ Settings</button>
     <button class="nav-link" onclick="go('scanner',this)">URL Scanner</button>
   </div>
   <div class="nav-right">
@@ -223,11 +227,12 @@ tr:hover td{background:var(--accent-glow)}
 <!-- ALL INCIDENTS -->
 <div id="pg-incidents" class="page">
   <div class="pg-hd"><div class="pg-title">📋 All Incidents</div>
-    <div class="filter-bar">
+    <div class="filter-bar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input id="incident-search" class="scan-input" style="width:260px;padding:5px 12px;font-size:12px;margin:0" placeholder="🔍 Search URL, sender..." oninput="rI()"/>
       <button class="fbtn act" onclick="filt('ALL',this)">All</button>
-      <button class="fbtn" onclick="filt('SAFE',this)">Safe</button>
-      <button class="fbtn" onclick="filt('SUSPICIOUS',this)">Suspicious</button>
-      <button class="fbtn" onclick="filt('HIGH_RISK',this)">High Risk</button>
+      <button class="fbtn" onclick="filt('SAFE',this)">✅ Safe</button>
+      <button class="fbtn" onclick="filt('SUSPICIOUS',this)">⚠️ Suspicious</button>
+      <button class="fbtn" onclick="filt('HIGH_RISK',this)">🚨 High Risk</button>
     </div>
   </div>
   <div class="card"><div class="tbl-wrap" style="max-height:calc(100vh - 180px)">
@@ -240,9 +245,78 @@ tr:hover td{background:var(--accent-glow)}
 <div id="pg-blocked" class="page">
   <div class="pg-hd"><div class="pg-title">🚨 Blocked URLs</div><span class="tag" id="bc">0</span></div>
   <div class="card"><div class="tbl-wrap" style="max-height:calc(100vh - 180px)">
-    <table><thead><tr><th class="col-time">Time</th><th class="col-url">URL</th><th class="col-sender">Sender</th><th class="col-score">Risk</th><th class="col-dec">Decision</th></tr></thead>
-    <tbody id="btb"><tr><td colspan="5" class="empty"><div class="empty-ico">🛡️</div>No blocked URLs</td></tr></tbody></table>
+    <table><thead><tr><th class="col-time">Time</th><th class="col-url">URL</th><th class="col-sender">Sender</th><th class="col-score">Risk</th><th class="col-dec">Decision</th><th class="col-act">Action</th></tr></thead>
+    <tbody id="btb"><tr><td colspan="6" class="empty"><div class="empty-ico">🛡️</div>No blocked URLs</td></tr></tbody></table>
   </div></div>
+</div>
+
+<!-- WHITELIST -->
+<div id="pg-whitelist" class="page">
+  <div class="pg-hd"><div class="pg-title">✅ Whitelist Manager</div></div>
+  <div class="card" style="max-width:580px;margin-bottom:12px">
+    <div class="card-hd"><h3>Add Safe Domain</h3></div>
+    <div class="card-body">
+      <div class="scan-form"><input class="scan-input" id="wlIn" placeholder="example.com or https://example.com" onkeydown="if(event.key==='Enter')addWl()"/><button class="btn btn-glow" onclick="addWl()">Add Domain</button></div>
+      <div id="wlMsg" style="font-size:12px;margin-top:8px"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hd"><h3>Whitelisted Domains <span class="tag" id="wlc">0</span></h3></div>
+    <div class="tbl-wrap" style="max-height:calc(100vh - 300px)">
+      <table><thead><tr><th>Domain</th><th>Reason</th><th>Added At</th><th>Action</th></tr></thead>
+      <tbody id="wltb"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- BLOCK MANAGER -->
+<div id="pg-blockmanager" class="page">
+  <div class="pg-hd"><div class="pg-title">🚫 Block Manager</div></div>
+  <div class="card" style="max-width:580px;margin-bottom:12px">
+    <div class="card-hd"><h3>Block a Domain</h3></div>
+    <div class="card-body">
+      <div style="display:grid;gap:8px;margin-bottom:8px">
+        <input class="scan-input" id="mBlkIn" placeholder="evil-site.com or https://bad-url.xyz" onkeydown="if(event.key==='Enter')addM()"/>
+        <input class="scan-input" id="mReasIn" placeholder="Reason (optional)" onkeydown="if(event.key==='Enter')addM()"/>
+      </div>
+      <button class="btn btn-glow" onclick="addM()" style="width:100%;background:var(--red)">🚫 Block This Domain</button>
+      <div id="mBlkMsg" style="font-size:12px;margin-top:8px"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hd"><h3>Manually Blocked <span class="tag" id="mBlkC">0</span></h3></div>
+    <div class="tbl-wrap" style="max-height:calc(100vh - 300px)">
+      <table><thead><tr><th>Domain</th><th>Reason</th><th>Blocked At</th><th>Action</th></tr></thead>
+      <tbody id="mBlkTb"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ANALYTICS -->
+<div id="pg-analytics" class="page">
+  <div class="pg-hd"><div class="pg-title">📊 Analytics</div></div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+    <div class="card">
+      <div class="card-hd"><h3>Threats Over Last 7 Days</h3></div>
+      <div class="card-body"><canvas id="threatTrendChart" height="200"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h3>Decision Breakdown</h3></div>
+      <div class="card-body"><canvas id="decisionChart" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card">
+      <div class="card-hd"><h3>Top Threat Senders</h3></div>
+      <div class="card-body" id="top-senders" style="font-size:13px"></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h3>Risk Score Distribution</h3></div>
+      <div class="card-body"><canvas id="riskDistChart" height="200"></canvas></div>
+    </div>
+  </div>
 </div>
 
 <!-- SCANNER -->
@@ -258,12 +332,63 @@ tr:hover td{background:var(--accent-glow)}
   <div class="card scan-box" style="margin-top:12px"><div class="card-hd"><h3>Scan History</h3></div><div class="card-body" id="sHist" style="font-size:12px;color:var(--muted)">No scans yet.</div></div>
 </div>
 
+<!-- SETTINGS -->
+<div id="pg-settings" class="page">
+  <div class="pg-hd"><div class="pg-title">⚙️ Settings</div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:900px">
+
+    <div class="card">
+      <div class="card-hd"><h3>🎯 Detection Thresholds</h3></div>
+      <div class="card-body" style="display:grid;gap:12px;font-size:13px">
+        <div>
+          <label style="color:var(--muted);font-size:12px;display:block;margin-bottom:4px">Suspicious Threshold (0.0 – 1.0)</label>
+          <input id="s-threshold" class="scan-input" type="number" min="0" max="1" step="0.05" value="0.50"/>
+        </div>
+        <div>
+          <label style="color:var(--muted);font-size:12px;display:block;margin-bottom:4px">High Risk Threshold (0.0 – 1.0)</label>
+          <input id="h-threshold" class="scan-input" type="number" min="0" max="1" step="0.05" value="0.75"/>
+        </div>
+        <button class="btn btn-glow" onclick="saveThresholds()" style="margin-top:4px">Save Thresholds</button>
+        <div id="thresh-msg" style="font-size:12px"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><h3>📄 Export & Reports</h3></div>
+      <div class="card-body" style="display:grid;gap:10px">
+        <a href="/api/report/pdf" target="_blank" style="display:block;background:var(--red);color:#fff;padding:10px;border-radius:6px;text-align:center;text-decoration:none;font-size:13px;font-weight:600;transition:transform 0.2s">📄 Download PDF Report</a>
+        <button class="btn" onclick="exportCSV()" style="border:1px solid var(--border);color:var(--text);padding:10px;border-radius:6px;font-size:13px;background:var(--surface2)">📊 Export Incidents as CSV</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><h3>ℹ️ System Info</h3></div>
+      <div class="card-body" style="font-size:13px;display:grid;gap:8px;color:var(--muted)">
+        <div>🟢 Java API: <strong style="color:var(--green)">localhost:8080</strong></div>
+        <div>🟡 Flask CNN: <strong id="set-flask-status">Checking...</strong></div>
+        <div>💾 Database: <strong style="color:var(--green)">MySQL Connected</strong></div>
+        <div>🤖 AI Mode: <strong style="color:var(--accent2)">Real Model (Weka)</strong></div>
+        <div>⏱️ Poll Interval: <strong style="color:var(--text)">Every 2 minutes</strong></div>
+      </div>
+    </div>
+
+    <div class="card" style="border-color:rgba(239,68,68,0.3)">
+      <div class="card-hd"><h3 style="color:var(--red)">⚠️ Danger Zone</h3></div>
+      <div class="card-body" style="display:grid;gap:10px">
+        <button class="btn" onclick="clearAllIncidents()" style="border:1px solid var(--red);color:var(--red);padding:10px;border-radius:6px;font-size:13px;background:var(--red-bg)">🗑️ Clear All Incidents</button>
+        <button class="btn" onclick="clearProcessedEmails()" style="border:1px solid var(--border);color:var(--muted);padding:10px;border-radius:6px;font-size:13px;background:var(--surface2)">🔄 Reset Email History</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 </div><!-- /main-wrap -->
 
 <script>
-const A='';let ch=null,allI=[],curF='ALL';const hist=[];
+const A='';let ch=null,allI=[],curF='ALL';const hist=[];let trendChart, decisionPieChart, riskDistChart2;
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function go(id,b){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));document.getElementById('pg-'+id).classList.add('active');if(b)b.classList.add('active');if(id==='blocked')ldB();if(id==='incidents')ldI()}
+function go(id,b){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));document.getElementById('pg-'+id).classList.add('active');if(b)b.classList.add('active');if(id==='blocked')ldB();if(id==='incidents')ldI();if(id==='whitelist')ldW();if(id==='blockmanager')ldM();if(id==='analytics')loadAnalytics();if(id==='settings')ldS()}
 function rc(s){return s>=.75?'var(--red)':s>=.5?'var(--orange)':'var(--green)'}
 function db(d){const m={HIGH_RISK:'dec-h',SUSPICIOUS:'dec-p',SAFE:'dec-s',BLOCKED:'dec-h'};return'<span class="dec '+(m[d]||'dec-s')+'">'+esc(d)+'</span>'}
 function rb(s){const p=Math.min(100,s*100).toFixed(0),c=rc(s);return'<div class="rbar"><div class="rtrack"><div class="rfill" style="width:'+p+'%;background:'+c+'"></div></div><span class="rval" style="color:'+c+'">'+s.toFixed(3)+'</span></div>'}
@@ -282,7 +407,9 @@ async function ldD(){
     if(ch)ch.destroy();
     ch=new Chart(document.getElementById('chart1'),{type:'doughnut',data:{labels:['Safe','Suspicious','High Risk'],datasets:[{data:[sf,sp,hi],backgroundColor:['#10b981','#f59e0b','#ef4444'],borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'72%',plugins:{legend:{position:'bottom',labels:{color:getComputedStyle(document.body).getPropertyValue('--muted').trim(),padding:10,font:{size:11,family:'Inter'},usePointStyle:true,pointStyleWidth:8}}}}});
   }catch(e){document.getElementById('apiDot').className='dot dot-r';document.getElementById('apiSt').textContent='Offline'}
-  try{const rf=await fetch(A+'/api/flask-status');const f=await rf.json();document.getElementById('flDot').className=f.online?'dot dot-g':'dot dot-o';document.getElementById('flSt').textContent=f.online?'Online':'Offline'}catch(e){}
+  try{const rf=await fetch(A+'/api/flask-status');const f=await rf.json();document.getElementById('flDot').className=f.online?'dot dot-g':'dot dot-o';document.getElementById('flSt').textContent=f.online?'Online':'Offline';
+      if(document.getElementById('set-flask-status')){document.getElementById('set-flask-status').textContent=f.online?'Online':'Offline';document.getElementById('set-flask-status').style.color=f.online?'var(--green)':'var(--orange)';}
+  }catch(e){}
   try{const ir=await fetch(A+'/api/incidents?limit=20');const il=await ir.json();
     document.getElementById('rc').textContent=il.length;
     const tb=document.getElementById('rtb');
@@ -295,13 +422,139 @@ function animN(id,t){const el=document.getElementById(id);let s=0;const step=()=
 
 async function ldI(){try{const r=await fetch(A+'/api/incidents?limit=500');allI=await r.json();rI()}catch(e){document.getElementById('itb').innerHTML='<tr><td colspan="6" class="empty">Error</td></tr>'}}
 function filt(f,b){curF=f;document.querySelectorAll('.fbtn').forEach(x=>x.classList.remove('act'));if(b)b.classList.add('act');rI()}
-function rI(){const fl=curF==='ALL'?allI:allI.filter(i=>i.decision===curF);const tb=document.getElementById('itb');if(!fl.length){tb.innerHTML='<tr><td colspan="6"><div class="empty"><div class="empty-ico">🔍</div>No '+curF.toLowerCase()+' incidents</div></td></tr>';return}tb.innerHTML=fl.map(i=>'<tr><td class="col-time">'+ft(i.timestamp)+'</td><td class="col-url" title="'+esc(i.url||'')+'">'+esc(i.url||'N/A')+'</td><td class="col-sender">'+esc(gn(i))+'</td><td>'+rb(gs(i))+'</td><td>'+db(i.decision||'SAFE')+'</td><td style="font-size:11px;color:var(--muted)">'+esc(i.actionTaken||'\u2014')+'</td></tr>').join('')}
+function rI(){
+  const search=(document.getElementById('incident-search')?.value||'').toLowerCase();
+  let fl=allI;
+  if(curF!=='ALL') fl=fl.filter(i=>i.decision===curF);
+  if(search) fl=fl.filter(i=>(i.url||'').toLowerCase().includes(search)||(gn(i)||'').toLowerCase().includes(search)||(i.decision||'').toLowerCase().includes(search));
+  const tb=document.getElementById('itb');
+  if(!fl.length){tb.innerHTML='<tr><td colspan="6"><div class="empty"><div class="empty-ico">🔍</div>No results for "'+esc(search||curF)+'"</div></td></tr>';return}
+  tb.innerHTML=fl.map(i=>'<tr><td class="col-time">'+ft(i.timestamp)+'</td><td class="col-url" title="'+esc(i.url||'')+'">'+esc(i.url||'N/A')+'</td><td class="col-sender">'+esc(gn(i))+'</td><td>'+rb(gs(i))+'</td><td>'+db(i.decision||'SAFE')+'</td><td style="font-size:11px;color:var(--muted)">'+esc(i.actionTaken||'\u2014')+'</td></tr>').join('')
+}
 
-async function ldB(){try{const r=await fetch(A+'/api/blocked');const bl=await r.json();document.getElementById('bc').textContent=bl.length+' blocked';const tb=document.getElementById('btb');if(!bl.length){tb.innerHTML='<tr><td colspan="5"><div class="empty"><div class="empty-ico">🛡️</div>All clear!</div></td></tr>';return}tb.innerHTML=bl.map(i=>'<tr><td class="col-time">'+ft(i.timestamp)+'</td><td class="col-url" style="color:var(--red)" title="'+esc(i.url||'')+'">'+esc(i.url||'')+'</td><td class="col-sender">'+esc(gn(i))+'</td><td>'+rb(gs(i))+'</td><td>'+db(i.decision||'HIGH_RISK')+'</td></tr>').join('')}catch(e){}}
+async function ldB(){try{const r=await fetch(A+'/api/blocked');const bl=await r.json();document.getElementById('bc').textContent=bl.length+' blocked';const tb=document.getElementById('btb');if(!bl.length){tb.innerHTML='<tr><td colspan="6"><div class="empty"><div class="empty-ico">🛡️</div>All clear!</div></td></tr>';return}tb.innerHTML=bl.map(i=>{const d=i.url.replace(/https?:\/\//,'').replace(/www\./,'').split('/')[0];return '<tr><td class="col-time">'+ft(i.timestamp)+'</td><td class="col-url" style="color:var(--red)" title="'+esc(i.url||'')+'">'+esc(i.url||'')+'</td><td class="col-sender">'+esc(gn(i))+'</td><td>'+rb(gs(i))+'</td><td>'+db(i.decision||'HIGH_RISK')+'</td><td><button class="btn" style="padding:4px 8px;font-size:10px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)" onclick="ubD(\''+d+'\')">Unblock</button></td></tr>'}).join('')}catch(e){}}
+
+async function ldW(){try{const r=await fetch(A+'/api/whitelist');const l=await r.json();document.getElementById('wlc').textContent=l.length;const tb=document.getElementById('wltb');if(!l.length){tb.innerHTML='<tr><td colspan="4" class="empty">No whitelisted domains yet</td></tr>';return}tb.innerHTML=l.map(w=>'<tr><td style="font-family:monospace;color:var(--green)">'+esc(w.domain)+'</td><td style="color:var(--muted)">'+esc(w.reason)+'</td><td style="font-size:11px;color:var(--faint)">'+esc(w.addedAt)+'</td><td><button class="btn" style="padding:4px 8px;font-size:10px;color:var(--red)" onclick="rmW(\''+w.domain+'\')">Remove</button></td></tr>').join('')}catch(e){}}
+
+async function addWl(){const d=document.getElementById('wlIn').value.trim();if(!d)return;try{const r=await fetch(A+'/api/whitelist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain:d})});const res=await r.json();document.getElementById('wlMsg').innerHTML='<span style="color:var(--green)">✅ Added: '+esc(res.domain)+'</span>';document.getElementById('wlIn').value='';ldW()}catch(e){}}
+
+async function rmW(d){if(!confirm('Remove "'+d+'" from whitelist?'))return;try{await fetch(A+'/api/whitelist/'+encodeURIComponent(d),{method:'DELETE'});ldW()}catch(e){}}
+
+async function ubD(d){if(!confirm('Unblock and whitelist "'+d+'"?'))return;try{const r=await fetch(A+'/api/whitelist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain:d,reason:'Unblocked from dashboard'})});const res=await r.json();if(res.success){alert('Domain whitelisted!');ldB()}}catch(e){}}
+
+async function ldM(){try{const r=await fetch(A+'/api/manual-blocks');const l=await r.json();document.getElementById('mBlkC').textContent=l.length;const tb=document.getElementById('mBlkTb');if(!l.length){tb.innerHTML='<tr><td colspan="4" class="empty">No manually blocked domains</td></tr>';return}tb.innerHTML=l.map(b=>'<tr><td style="font-family:monospace;color:var(--red)">'+esc(b.domain)+'</td><td style="color:var(--muted)">'+esc(b.reason)+'</td><td style="font-size:11px;color:var(--faint)">'+esc(b.addedAt)+'</td><td><button class="btn" style="padding:4px 8px;font-size:10px;color:var(--muted)" onclick="rmM(\''+b.domain+'\')">✕ Unblock</button></td></tr>').join('')}catch(e){}}
+
+async function addM(){const d=document.getElementById('mBlkIn').value.trim();const r=document.getElementById('mReasIn').value.trim();if(!d)return;try{const res=await fetch(A+'/api/manual-blocks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain:d,reason:r})});const data=await res.json();document.getElementById('mBlkMsg').innerHTML='<span style="color:var(--red)">🚫 Blocked: '+esc(data.domain)+'</span>';document.getElementById('mBlkIn').value='';document.getElementById('mReasIn').value='';ldM()}catch(e){}}
+
+async function rmM(d){if(!confirm('Remove manual block on "'+d+'"?'))return;try{await fetch(A+'/api/manual-blocks/'+encodeURIComponent(d),{method:'DELETE'});ldM()}catch(e){}}
 
 async function doScan(url,el){el.className='scan-res show';el.innerHTML='<span style="color:var(--muted)">Scanning...</span>';try{const r=await fetch(A+'/api/scan?url='+encodeURIComponent(url));const d=await r.json();const sc=d.finalScore!=null?d.finalScore:d.score||0;const c=rc(sc);el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:11px;color:var(--muted);margin-bottom:4px;word-break:break-all">'+esc(url)+'</div><span style="font-size:20px;font-weight:800;color:'+c+'">'+sc.toFixed(4)+'</span></div>'+db(d.decision||'SAFE')+'</div>';hist.unshift({url,sc,dec:d.decision||'SAFE'});const h=document.getElementById('sHist');h.innerHTML=hist.slice(0,10).map(s=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border2)"><span class="col-url" style="width:auto;max-width:280px">'+esc(s.url)+'</span><span style="display:flex;gap:6px;align-items:center">'+rb(s.sc)+db(s.dec)+'</span></div>').join('')}catch(e){el.innerHTML='<span style="color:var(--red)">Scan failed</span>'}}
 function qScan(){const u=document.getElementById('qUrl').value.trim();if(u)doScan(u,document.getElementById('qRes'))}
 function fScan(){const u=document.getElementById('sUrl').value.trim();if(u)doScan(u,document.getElementById('fRes'))}
+
+async function loadAnalytics() {
+  try {
+    const r = await fetch(A+'/api/incidents?limit=1000');
+    const incidents = await r.json();
+
+    const days = {};
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      days[d.toLocaleDateString('en-IN', {month:'short', day:'numeric'})] = 0;
+    }
+    incidents.forEach(inc => {
+      if (!inc.timestamp) return;
+      const d = new Date(inc.timestamp);
+      const label = d.toLocaleDateString('en-IN', {month:'short', day:'numeric'});
+      if (label in days && inc.decision !== 'SAFE') days[label]++;
+    });
+
+    if (trendChart) trendChart.destroy();
+    trendChart = new Chart(document.getElementById('threatTrendChart'), {
+      type: 'line',
+      data: { labels: Object.keys(days), datasets: [{ label: 'Threats', data: Object.values(days), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', tension: 0.4, fill: true }] },
+      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: getComputedStyle(document.body).getPropertyValue('--muted').trim() }, grid: { color: getComputedStyle(document.body).getPropertyValue('--border2').trim() } }, x: { ticks: { color: getComputedStyle(document.body).getPropertyValue('--muted').trim() }, grid: { color: getComputedStyle(document.body).getPropertyValue('--border2').trim() } } } }
+    });
+
+    const safe = incidents.filter(i => i.decision === 'SAFE').length;
+    const susp = incidents.filter(i => i.decision === 'SUSPICIOUS').length;
+    const high = incidents.filter(i => i.decision === 'HIGH_RISK').length;
+
+    if (decisionPieChart) decisionPieChart.destroy();
+    decisionPieChart = new Chart(document.getElementById('decisionChart'), {
+      type: 'doughnut',
+      data: { labels: ['Safe', 'Suspicious', 'High Risk'], datasets: [{ data: [safe, susp, high], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'], borderWidth: 0 }] },
+      options: { plugins: { legend: { labels: { color: getComputedStyle(document.body).getPropertyValue('--muted').trim() } } }, cutout: '65%' }
+    });
+
+    const senderMap = {};
+    incidents.filter(i => gn(i) && gn(i) !== '—' && i.decision !== 'SAFE').forEach(i => { senderMap[gn(i)] = (senderMap[gn(i)]||0) + 1; });
+    const topSenders = Object.entries(senderMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    document.getElementById('top-senders').innerHTML = topSenders.length
+      ? topSenders.map(([s,c]) => '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;max-width:70%">' + esc(s) + '</span><span style="color:var(--red);font-weight:600">' + c + ' threats</span></div>').join('')
+      : '<div style="color:var(--muted);text-align:center;padding:24px">No threat senders found</div>';
+
+    const bins = [0,0,0,0,0];
+    incidents.forEach(i => {
+      const s = gs(i);
+      if (s < 0.2) bins[0]++; else if (s < 0.4) bins[1]++; else if (s < 0.6) bins[2]++; else if (s < 0.8) bins[3]++; else bins[4]++;
+    });
+
+    if (riskDistChart2) riskDistChart2.destroy();
+    riskDistChart2 = new Chart(document.getElementById('riskDistChart'), {
+      type: 'bar',
+      data: { labels: ['0.0-0.2','0.2-0.4','0.4-0.6','0.6-0.8','0.8-1.0'], datasets: [{ data: bins, backgroundColor: ['#10b981','#06b6d4','#f59e0b','#ef4444','#b91c1c'] }] },
+      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: getComputedStyle(document.body).getPropertyValue('--muted').trim() }, grid: { color: getComputedStyle(document.body).getPropertyValue('--border2').trim() } }, x: { ticks: { color: getComputedStyle(document.body).getPropertyValue('--muted').trim() }, grid: { color: getComputedStyle(document.body).getPropertyValue('--border2').trim() } } } }
+    });
+  } catch(e) { console.error('Analytics error:', e); }
+}
+
+function ldS() { ldD(); } // Just refresh stats/status when opening settings
+
+async function saveThresholds() {
+  const susp = document.getElementById('s-threshold').value;
+  const high = document.getElementById('h-threshold').value;
+  const msg = document.getElementById('thresh-msg');
+  try {
+    const r = await fetch(A+'/api/settings/thresholds', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ suspicious: parseFloat(susp), high: parseFloat(high) })
+    });
+    const d = await r.json();
+    msg.innerHTML = '<span style="color:var(--green)">✅ Thresholds saved! Restart Java to apply.</span>';
+  } catch(e) {
+    msg.innerHTML = '<span style="color:var(--red)">❌ Error saving</span>';
+  }
+}
+
+function exportCSV() {
+  const headers = ['URL', 'Sender', 'Risk Score', 'Decision', 'Action', 'Time'];
+  const rows = allI.map(i => [
+    `"${i.url || ''}"`, `"${gn(i) || ''}"`,
+    gs(i) || 0, i.decision || '', i.actionTaken || '',
+    `"${new Date(i.timestamp).toISOString()}"`
+  ]);
+  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'phishguard-incidents-' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+}
+
+async function clearAllIncidents() {
+  if (!confirm('⚠️ Clear ALL incidents from database? This cannot be undone.')) return;
+  await fetch(A+'/api/incidents/clear', { method: 'DELETE' });
+  alert('All incidents cleared.');
+  ldD(); ldI();
+}
+
+async function clearProcessedEmails() {
+  if (!confirm('Reset email tracking? All emails will be re-scanned on next poll.')) return;
+  await fetch(A+'/api/processed-emails/clear', { method: 'DELETE' });
+  alert('Email history reset.');
+}
 
 function toggleTheme(){const b=document.getElementById('themeBtn');const isL=document.documentElement.getAttribute('data-theme')==='light';document.documentElement.setAttribute('data-theme',isL?'dark':'light');b.classList.toggle('light',!isL);localStorage.setItem('theme',isL?'dark':'light');if(ch){ch.options.plugins.legend.labels.color=getComputedStyle(document.body).getPropertyValue('--muted').trim();ch.update()}}
 (function(){const t=localStorage.getItem('theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.getElementById('themeBtn').classList.add('light')}})();
