@@ -126,6 +126,32 @@ public class RiskScorer {
             this.decisionReason = "Analysis failed: " + e.getMessage();
         }
     }
+    /**
+     * Fast scan — only ML + Keywords, no network calls.
+     * Used by extension popup for sub-second results.
+     */
+    public void scoreFast(String url, String sender, String source) {
+        this.url = url;
+        this.emailSender = sender;
+        try {
+            // Layer 1: ML only
+            this.aiModelScore = com.phishguard.detection.AIModelEngine.predict(url);
+            
+            // Layer 2: Keywords
+            this.textScore = com.phishguard.detection.TextNLPAnalyzer.analyze(url + " " + sender);
+            
+            // Simple ensemble for quick scan (70% ML, 30% Keywords)
+            this.finalScore = (this.aiModelScore * 0.7) + (this.textScore * 0.3);
+            this.decision   = com.phishguard.engine.DecisionEngine.decide(this.finalScore);
+            
+            System.out.printf("[QuickScan] %s → %.4f (%s)%n", 
+                url.substring(0, Math.min(50, url.length())), 
+                finalScore, decision);
+        } catch (Exception e) {
+            this.finalScore = 0.0;
+            this.decision   = "SAFE";
+        }
+    }
 
     // ── Core computation ─────────────────────────────────────────────────
 

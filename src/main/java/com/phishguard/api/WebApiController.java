@@ -36,13 +36,15 @@ public class WebApiController {
     public static void init() {
         Spark.port(8080);
 
-        // CORS
-        Spark.before((req, res) -> {
-            res.header("Access-Control-Allow-Origin", "*");
-            res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-            res.header("Access-Control-Allow-Headers", "Content-Type");
+        // ── CORS Configuration ──────────────────────────────────────────
+        Spark.options("/*", (req, res) -> {
+            setCorsHeaders(res);
+            return "OK";
         });
-        Spark.options("/*", (req, res) -> { res.status(200); return "OK"; });
+
+        Spark.before((req, res) -> {
+            setCorsHeaders(res);
+        });
 
         // Serve Chart.js locally — avoids Edge tracking prevention on jsdelivr
         Spark.get("/chartjs", (req, res) -> {
@@ -69,8 +71,9 @@ public class WebApiController {
             res.header("Access-Control-Allow-Methods", "GET");
             return "";
         });
-        Spark.get("/api/scan",      WebApiController::scanUrl);
-        Spark.post("/api/scan",     WebApiController::scanUrlPost);
+        Spark.get("/api/scan",       WebApiController::scanUrl);
+        Spark.post("/api/scan",      WebApiController::scanUrlPost);
+        Spark.post("/api/scan/quick", WebApiController::scanUrlQuick);
         Spark.get("/api/incidents",  WebApiController::incidents);
         Spark.get("/api/blocked",    WebApiController::blocked);
         Spark.get("/api/status",     WebApiController::status);
@@ -711,5 +714,51 @@ public class WebApiController {
         int safe;
         int suspicious;
         int highRisk;
+    }
+    private static void setCorsHeaders(Response res) {
+        res.header("Access-Control-Allow-Origin", "*");
+        res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+        res.header("Access-Control-Max-Age", "3600");
+    }
+
+    private static Object scanUrlQuick(Request req, Response res) {
+        res.type("application/json");
+        setCorsHeaders(res);
+
+        try {
+            Map<String, Object> body = gson.fromJson(req.body(), Map.class);
+            String url = (String) body.get("url");
+
+            if (url == null || url.isBlank()) {
+                return "{\"decision\":\"SAFE\",\"riskScore\":0.0,\"confidence\":\"N/A\"}";
+            }
+
+            // Skip chrome:// and extension pages
+            if (url.startsWith("chrome://") || url.startsWith("chrome-extension://")
+                || url.startsWith("about:") || url.startsWith("edge://")) {
+                return gson.toJson(Map.of(
+                    "decision", "SAFE",
+                    "riskScore", 0.0,
+                    "confidence", "Browser Page",
+                    "message", "Internal browser page — not scanned"
+                ));
+            }
+
+            // Run only fast layers: ML + Keywords (skip WHOIS/VT/CNN)
+            RiskScorer scorer = new RiskScorer(url, "browser", "EXTENSION_POPUP");
+            scorer.scoreFast(url, "", "EXTENSION_POPUP");
+
+            return gson.toJson(Map.of(
+                "decision",   scorer.decision,
+                "riskScore",  scorer.finalScore,
+                "confidence", DecisionEngine.getConfidence(scorer.finalScore),
+                "url",        url
+            ));
+
+        } catch (Exception e) {
+            res.status(500);
+            return "{\"error\":\"" + e.getMessage() + "\"}";
+        }
     }
 }
