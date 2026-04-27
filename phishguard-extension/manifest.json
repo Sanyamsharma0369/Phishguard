@@ -4,16 +4,18 @@
   "version": "1.0",
   "description": "Blocks phishing URLs detected by PhishGuard",
   "permissions": [
-    "storage",
-    "notifications",
     "tabs",
-    "webNavigation",
-    "activeTab",
-    "scripting"
+    "activeTab", 
+    "scripting",
+    "storage",
+    "declarativeNetRequest",
+    "notifications"
   ],
   "host_permissions": [
-    "<all_urls>",
-    "http://localhost:8080/*"
+    "http://localhost:8080/*",
+    "http://localhost:8081/*",
+    "http://*/*",
+    "https://*/*"
   ],
   "background": {
     "service_worker": "background.js"

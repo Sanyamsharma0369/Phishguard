@@ -214,6 +214,20 @@
 <script>
 const API = 'http://localhost:8080';
 
+// ── Timeout Helper ────────────────────────────────────────────────────────────
+async function fetchWithTimeout(url, options = {}, timeout = 4000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+        const res = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(timer);
+        return res;
+    } catch (e) {
+        clearTimeout(timer);
+        throw e;
+    }
+}
+
 // ── Open Dashboard ────────────────────────────────────────────────────────────
 function openDashboard() {
   chrome.tabs.create({ url: API });
@@ -235,11 +249,11 @@ async function scanCurrentTab() {
   document.getElementById('scan-btn').disabled = true;
 
   try {
-    const res = await fetch(`${API}/api/scan`, {
+    const res = await fetchWithTimeout(`${API}/api/scan/quick`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, source: 'EXTENSION_POPUP' })
-    });
+    }, 4000);
     const data = await res.json();
     displayScanResult(data, url);
   } catch (e) {
@@ -283,7 +297,7 @@ function displayScanResult(data, url) {
 // ── Load Stats ────────────────────────────────────────────────────────────────
 async function loadStats() {
   try {
-    const data = await fetch(`${API}/api/stats`).then(r => r.json());
+    const data = await fetchWithTimeout(`${API}/api/stats`, {}, 3000).then(r => r.json());
     document.getElementById('stat-blocked').textContent  = data.blocked  || 0;
     document.getElementById('stat-suspicious').textContent = data.suspicious || 0;
     document.getElementById('stat-safe').textContent     = data.safe     || 0;
@@ -295,7 +309,7 @@ async function loadStats() {
 // ── Load Recent Threats ───────────────────────────────────────────────────────
 async function loadRecentThreats() {
   try {
-    const data = await fetch(`${API}/api/incidents?limit=3`).then(r => r.json());
+    const data = await fetchWithTimeout(`${API}/api/incidents?limit=3`, {}, 3000).then(r => r.json());
     const threats = data.filter(i => 
       i.decision === 'HIGH_RISK' || i.decision === 'SUSPICIOUS');
 
@@ -322,7 +336,7 @@ async function loadRecentThreats() {
 // ── Check System Health ───────────────────────────────────────────────────────
 async function checkSystem() {
   try {
-    const health = await fetch(`${API}/api/health/layers`).then(r => r.json());
+    const health = await fetchWithTimeout(`${API}/api/health/layers`, {}, 3000).then(r => r.json());
     document.getElementById('sys-api').textContent = '✅ Running';
     document.getElementById('sys-api').style.color = '#3fb950';
 
@@ -357,11 +371,11 @@ async function autoScanCurrentTab() {
       url.length > 45 ? url.substring(0, 45) + '...' : url;
 
     try {
-      const res = await fetch(`${API}/api/scan`, {
+      const res = await fetchWithTimeout(`${API}/api/scan/quick`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url, source: 'EXTENSION_POPUP_AUTO' })
-      });
+      }, 4000);
       const data = await res.json();
       displayScanResult(data, url);
     } catch(e) {
