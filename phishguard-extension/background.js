@@ -101,11 +101,16 @@ function injectGmailWarning() {
                style="color:#f85149;text-decoration:underline;font-size:12px;flex-shrink:0">
                 View Dashboard →
             </a>
-            <button onclick="document.getElementById('phishguard-banner').remove()"
+            <button id="phishguard-close-btn"
                     style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;cursor:pointer;font-size:14px;padding:4px 8px;border-radius:4px;margin-left:8px;flex-shrink:0">✕</button>
         `;
 
         document.body.prepend(banner);
+
+        // CSP-compliant event listener
+        document.getElementById('phishguard-close-btn').addEventListener('click', () => {
+            document.getElementById('phishguard-banner').remove();
+        });
     })
     .catch(() => {});
 }
