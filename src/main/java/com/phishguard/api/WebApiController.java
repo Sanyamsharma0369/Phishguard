@@ -24,7 +24,6 @@ import java.net.URI;
 import java.util.*;
 import com.phishguard.engine.ExplainabilityEngine;
 import com.phishguard.utils.ThreatIntelCache;
-import com.phishguard.detection.AIModelEngine;
 
 @SuppressWarnings("unchecked")
 public class WebApiController {
