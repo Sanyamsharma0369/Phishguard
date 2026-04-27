@@ -16,6 +16,7 @@ import spark.Request;
 import spark.Response;
 import spark.Spark;
 
+import java.sql.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.Duration;
@@ -75,6 +76,7 @@ public class WebApiController {
         Spark.post("/api/scan",      WebApiController::scanUrlPost);
         Spark.post("/api/scan/quick", WebApiController::scanUrlQuick);
         Spark.get("/api/incidents",  WebApiController::incidents);
+        Spark.get("/api/incidents/:id/explain", WebApiController::explainIncident);
         Spark.get("/api/blocked",    WebApiController::blocked);
         Spark.get("/api/status",     WebApiController::status);
         Spark.get("/api/quarantine", WebApiController::quarantine);
@@ -715,6 +717,98 @@ public class WebApiController {
         int suspicious;
         int highRisk;
     }
+    private static Object explainIncident(Request req, Response res) {
+        res.type("application/json");
+        setCorsHeaders(res);
+
+        try {
+            long id = Long.parseLong(req.params(":id"));
+            String sql = "SELECT * FROM incidents WHERE id = ?";
+
+            try (Connection c = DBConnection.getInstance().getConnection();
+                 PreparedStatement ps = c.prepareStatement(sql)) {
+
+                ps.setLong(1, id);
+                ResultSet rs = ps.executeQuery();
+
+                if (!rs.next()) {
+                    res.status(404);
+                    return "{\"error\":\"Incident not found\"}";
+                }
+
+                double riskScore = rs.getDouble("final_risk_score");
+                String decision  = rs.getString("ai_decision");
+                String url       = rs.getString("url_found");
+                double mlScore   = rs.getDouble("ai_model_score");
+                double txtScore  = rs.getDouble("text_score");
+                double vtScore   = rs.getDouble("threat_intel_score");
+                int vtCount      = rs.getInt("virustotal_detections");
+                boolean ptPhish  = rs.getBoolean("phishtank_confirmed");
+                double cnnScore  = rs.getDouble("visual_score");
+                String age       = rs.getString("domain_age");
+
+                List<String> red    = new ArrayList<>();
+                List<String> yellow = new ArrayList<>();
+                List<String> green  = new ArrayList<>();
+
+                // ML Model
+                if (mlScore >= 0.75) red.add("AI Model: HIGH probability of phishing (" + String.format("%.1f%%", mlScore * 100) + ")");
+                else if (mlScore >= 0.40) yellow.add("AI Model: Moderate phishing probability (" + String.format("%.1f%%", mlScore * 100) + ")");
+                else green.add("AI Model: URL structure appears safe (" + String.format("%.1f%%", mlScore * 100) + ")");
+
+                // VirusTotal
+                if (vtCount >= 5) red.add("VirusTotal: Flagged as malicious by " + vtCount + " security engines");
+                else if (vtCount > 0) yellow.add("VirusTotal: Flagged by " + vtCount + " engine(s) — exercise caution");
+                else green.add("VirusTotal: No malicious detections found");
+
+                // PhishTank
+                if (ptPhish) red.add("PhishTank: URL confirmed in community phishing database");
+                else green.add("PhishTank: Not listed in known phishing databases");
+
+                // CNN Visual
+                if (cnnScore >= 0.75) red.add("Visual CNN: Page layout highly resembles a known phishing template");
+                else if (cnnScore >= 0.40) yellow.add("Visual CNN: Visual elements show some similarity to phishing pages");
+                else if (cnnScore > 0) green.add("Visual CNN: Page visuals appear legitimate");
+
+                // Domain Age
+                if (age != null && !age.equals("Unknown")) {
+                    if (age.contains("days") && !age.contains("year")) {
+                        try {
+                            int days = Integer.parseInt(age.replaceAll("[^0-9]", ""));
+                            if (days < 30) red.add("Domain Age: Registered only " + age + " ago (New domains are high risk)");
+                            else if (days < 90) yellow.add("Domain Age: Relatively new domain (" + age + ")");
+                            else green.add("Domain Age: Established domain (" + age + ")");
+                        } catch (Exception e) { yellow.add("Domain Age: " + age); }
+                    } else { green.add("Domain Age: Established domain (" + age + ")"); }
+                }
+
+                // URL Tricks
+                if (url.contains("@")) red.add("URL Structure: Contains '@' symbol (Classic credential phishing trick)");
+                if (url.startsWith("http://") && !url.contains("localhost")) yellow.add("Security: Using insecure HTTP instead of HTTPS");
+
+                Map<String, Object> result = new LinkedHashMap<>();
+                result.put("url", url);
+                result.put("decision", decision);
+                result.put("summary", buildSummary(decision, red.size(), yellow.size()));
+                result.put("redFlags", red);
+                result.put("yellowFlags", yellow);
+                result.put("greenFlags", green);
+                result.put("domainAge", age);
+
+                return gson.toJson(result);
+            }
+        } catch (Exception e) {
+            res.status(500);
+            return "{\"error\":\"" + e.getMessage() + "\"}";
+        }
+    }
+
+    private static String buildSummary(String decision, int red, int yellow) {
+        if ("HIGH_RISK".equals(decision)) return "🚨 This URL has been flagged as HIGH RISK due to " + red + " critical signal(s).";
+        if ("SUSPICIOUS".equals(decision)) return "⚠️ This URL is suspicious. " + yellow + " warning(s) were found during analysis.";
+        return "✅ This URL appears safe based on our multi-layer analysis.";
+    }
+
     private static void setCorsHeaders(Response res) {
         res.header("Access-Control-Allow-Origin", "*");
         res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
