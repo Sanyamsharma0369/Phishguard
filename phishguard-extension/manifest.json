@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "PhishGuard Protection",
+  "version": "1.0",
+  "description": "Blocks phishing URLs detected by PhishGuard",
+  "permissions": [
+    "storage",
+    "notifications",
+    "tabs",
+    "webNavigation",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "http://localhost:8080/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "PhishGuard Active",
+    "default_popup": "popup.html"
+  }
+}

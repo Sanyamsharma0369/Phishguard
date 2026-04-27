@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PhishGuard - Blocked</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #0f1117;
+  color: #e6edf3;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.container {
+  text-align: center;
+  max-width: 600px;
+  padding: 48px 32px;
+}
+.shield {
+  font-size: 72px;
+  margin-bottom: 24px;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #f85149;
+  margin-bottom: 12px;
+}
+.subtitle {
+  font-size: 16px;
+  color: #8b949e;
+  margin-bottom: 32px;
+  line-height: 1.6;
+}
+.url-box {
+  background: #161b22;
+  border: 1px solid #f8514933;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+  word-break: break-all;
+  font-family: monospace;
+  font-size: 13px;
+  color: #f85149;
+  text-align: left;
+}
+.score-box {
+  display: inline-block;
+  background: #f8514922;
+  border: 1px solid #f85149;
+  border-radius: 24px;
+  padding: 6px 20px;
+  font-size: 14px;
+  color: #f85149;
+  font-weight: 600;
+  margin-bottom: 32px;
+}
+.buttons { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.btn-back {
+  background: #f85149;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-back:hover { background: #da3633; }
+.btn-whitelist {
+  background: #238636;
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-whitelist:hover { background: #2ea043; }
+.btn-proceed {
+  background: transparent;
+  color: #8b949e;
+  border: 1px solid #30363d;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.btn-proceed:hover { border-color: #8b949e; color: #e6edf3; }
+.powered {
+  margin-top: 32px;
+  font-size: 12px;
+  color: #484f58;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="shield">🛡️</div>
+  <h1>Phishing Site Blocked</h1>
+  <p class="subtitle">
+    PhishGuard has detected and blocked this URL.<br>
+    This site may be attempting to steal your credentials or personal data.
+  </p>
+  <div class="url-box" id="blocked-url">Loading...</div>
+  <div class="score-box" id="risk-score">Risk Score: Loading...</div>
+  <div class="buttons">
+    <button class="btn-back" onclick="history.back()">← Go Back to Safety</button>
+    <button class="btn-whitelist" onclick="whitelistAndContinue()" id="wl-btn">✅ Trust This Domain</button>
+    <button class="btn-proceed" onclick="proceedAnyway()">Proceed Anyway (Risky)</button>
+  </div>
+  <div id="wl-status" style="margin-top:16px;font-size:13px;display:none"></div>
+  <div class="powered">Protected by PhishGuard v1.0</div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const url = params.get('url') || 'Unknown URL';
+const score = parseFloat(params.get('score') || 0);
+
+document.getElementById('blocked-url').textContent = url;
+document.getElementById('risk-score').textContent =
+  `Risk Score: ${score.toFixed(4)} — HIGH RISK`;
+
+function proceedAnyway() {
+  if (confirm('⚠️ WARNING: This URL has been flagged as HIGH RISK phishing.\n\nAre you absolutely sure you want to proceed?')) {
+    window.location.href = url;
+  }
+}
+
+async function whitelistAndContinue() {
+  const domain = url.replace(/https?:\/\//, '').replace(/www\./, '').split('/')[0];
+  const btn = document.getElementById('wl-btn');
+  const status = document.getElementById('wl-status');
+  
+  btn.disabled = true;
+  btn.textContent = 'Adding to whitelist...';
+  
+  try {
+    const r = await fetch('http://localhost:8080/api/whitelist', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ domain, reason: 'Trusted from blocked page' })
+    });
+    const d = await r.json();
+    
+    status.style.display = 'block';
+    status.style.color = '#3fb950';
+    status.innerHTML = `✅ <strong>${domain}</strong> added to whitelist!<br>
+      <small style="color:#8b949e">Navigating to site in 2 seconds...</small>`;
+    
+    setTimeout(() => { window.location.href = url; }, 2000);
+    
+  } catch(e) {
+    status.style.display = 'block';
+    status.style.color = '#f85149';
+    status.textContent = '❌ Could not reach PhishGuard API. Is Java running?';
+    btn.disabled = false;
+    btn.textContent = '✅ Trust This Domain';
+  }
+}
+</script>
+</body>
+</html>
