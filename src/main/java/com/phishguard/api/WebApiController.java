@@ -18,8 +18,9 @@ import spark.Spark;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import com.phishguard.engine.ExplainabilityEngine;
+import com.phishguard.utils.ThreatIntelCache;
 
 @SuppressWarnings("unchecked")
 public class WebApiController {
@@ -172,6 +173,57 @@ public class WebApiController {
             acc.put("datasetSize",   11055);
             acc.put("trainTestSplit","70:30");
             return gson.toJson(acc);
+        });
+
+        // ── Explainability Endpoint ──────────────────────────────────────
+        Spark.get("/api/incidents/:id/explain", (req, res) -> {
+            res.type("application/json");
+            res.header("Access-Control-Allow-Origin", "*");
+
+            try {
+                long id = Long.parseLong(req.params(":id"));
+                var incident = DBConnection.getInstance().getIncidentById(id);
+                if (incident == null) {
+                    res.status(404);
+                    return "{\"error\":\"Incident not found\"}";
+                }
+
+                // Extract fields
+                String url    = incident.getOrDefault("url", "").toString();
+                String sender = incident.getOrDefault("sender", "").toString();
+                double score  = Double.parseDouble(
+                    incident.getOrDefault("riskScore", "0").toString());
+
+                // Get cached threat intel
+                var cache = ThreatIntelCache.get(url);
+                double vtScore   = cache.map(c -> c.vtScore()).orElse(0.0);
+                int vtPositives  = cache.map(c -> c.vtPositives()).orElse(0);
+                int vtTotal      = cache.map(c -> c.vtTotal()).orElse(0);
+                boolean ptPhish  = cache.map(c -> c.ptIsPhishing()).orElse(false);
+                boolean ptVerify = cache.map(c -> c.ptVerified()).orElse(false);
+
+                // Parse keywords from stored incident
+                String kwStr = incident.getOrDefault("keywords", "").toString();
+                List<String> keywords = kwStr.isBlank() ? List.of() :
+                    Arrays.asList(kwStr.split(","));
+
+                var explanation = ExplainabilityEngine.explain(
+                    url, sender, vtScore, vtPositives, vtTotal,
+                    ptPhish, ptVerify, score, score * 0.9, keywords
+                );
+
+                return new Gson().toJson(Map.of(
+                    "summary",    explanation.summary(),
+                    "redFlags",   explanation.redFlags(),
+                    "yellowFlags",explanation.yellowFlags(),
+                    "greenFlags", explanation.greenFlags(),
+                    "totalRed",   explanation.totalRedFlags()
+                ));
+
+            } catch (Exception e) {
+                res.status(500);
+                return "{\"error\":\"" + e.getMessage() + "\"}";
+            }
         });
 
         Spark.delete("/api/incidents/clear", (req, res) -> {

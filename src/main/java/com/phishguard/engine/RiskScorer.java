@@ -81,27 +81,36 @@ public class RiskScorer {
      * Integrates AI model, Threat Intel, and Visual analysis.
      */
     public void score() {
-        // Layer 3: AI model score
-        this.aiModelScore = com.phishguard.detection.AIModelEngine.predict(url);
-        
-        // Layer 4: Threat Intel (only if suspicious)
-        if (this.aiModelScore > 0.4) {
-            this.threatIntelScore = com.phishguard.detection.ThreatIntelChecker.check(url);
-        }
-        
-        // Layer 5: Visual analysis
         try {
-            com.phishguard.detection.VisualAnalyzer.VisualResult vr = com.phishguard.detection.VisualAnalyzer.analyze(url);
-            this.visualScore         = vr.score;
-            this.visualBrandDetected = vr.detectedBrand;
+            // Layer 3: AI model score
+            this.aiModelScore = com.phishguard.detection.AIModelEngine.predict(url);
+            
+            // Layer 4: Threat Intel (only if suspicious)
+            if (this.aiModelScore > 0.4) {
+                this.threatIntelScore = com.phishguard.detection.ThreatIntelChecker.check(url);
+            }
+            
+            // Layer 5: Visual analysis
+            try {
+                com.phishguard.detection.VisualAnalyzer.VisualResult vr = com.phishguard.detection.VisualAnalyzer.analyze(url);
+                this.visualScore         = vr.score;
+                this.visualBrandDetected = vr.detectedBrand;
+            } catch (Exception e) {
+                this.visualScore         = 0.0;
+                this.visualBrandDetected = "Unknown";
+            }
+            
+            // Decision & Mitigation
+            com.phishguard.engine.DecisionEngine.decide(this);
+            com.phishguard.engine.MitigationEngine.mitigate(this);
+            
         } catch (Exception e) {
-            this.visualScore         = 0.0;
-            this.visualBrandDetected = "Unknown";
+            System.err.println("[RiskScorer] Critical error during analysis: " + e.getMessage());
+            // Default to suspicious if engine fails to ensure safety
+            this.decision = "SUSPICIOUS";
+            this.actionTaken = "WARNED";
+            this.decisionReason = "Analysis failed: " + e.getMessage();
         }
-        
-        // Decision & Mitigation
-        com.phishguard.engine.DecisionEngine.decide(this);
-        com.phishguard.engine.MitigationEngine.mitigate(this);
     }
 
     // ── Core computation ─────────────────────────────────────────────────

@@ -7,6 +7,8 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * PhishGuard - DBConnection.java
@@ -80,6 +82,27 @@ public class DBConnection {
                 connection = null;
             }
         }
+    }
+
+    public Map<String, Object> getIncidentById(long id) {
+        String sql = "SELECT * FROM incidents WHERE id = ?";
+        try (Connection c = getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, id);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("id",        rs.getLong("id"));
+                m.put("url",       rs.getString("url"));
+                m.put("sender",    rs.getString("sender"));
+                m.put("riskScore", rs.getDouble("risk_score"));
+                m.put("decision",  rs.getString("decision"));
+                m.put("keywords",  rs.getString("keywords") != null ? 
+                                   rs.getString("keywords") : "");
+                return m;
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return null;
     }
 
     public boolean isConnected() {

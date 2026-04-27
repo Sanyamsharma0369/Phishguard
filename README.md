@@ -28,13 +28,16 @@ and blocks phishing threats before you click — with instant browser notificati
 | 📧 **Gmail Monitoring** | Connects via IMAP, scans new emails every 2 minutes automatically |
 | 🤖 **ML Detection** | Weka RandomForest + Naive Bayes ensemble classifier |
 | 🧠 **CNN Visual Analysis** | TensorFlow screenshot analysis catches visual spoofing |
-| 🛡️ **Chrome Extension** | Blocks HIGH_RISK domains at the browser level in real time |
-| 🔔 **Live Notifications** | WebSocket-powered toast alerts — no page refresh needed |
-| 📊 **Analytics Dashboard** | 4 live charts — threats per day, top domains, risk distribution |
-| 📄 **PDF Reports** | One-click downloadable dark-themed security report |
+| 🛡️ **Chrome Extension** | Blocks HIGH_RISK domains & injects warning banners into Gmail |
+| 🔔 **Live Notifications** | WebSocket-powered toast alerts & audio warnings |
+| 📊 **Analytics Dashboard** | 5 live charts — threats per day, top domains, risk distribution |
+| 📋 **Clipboard Monitor** | Real-time system clipboard scanning for URLs (WhatsApp/Discord) |
+| 🌐 **Tab Interceptor** | Scans every tab opened in Chrome, not just blocked domains |
+| 🤖 **Model Performance** | Live accuracy metrics (94.7%+) shown on dashboard |
+| 🚨 **Email Alerts** | Sends Gmail notification when HIGH_RISK threat is detected |
 | 🗄️ **Threat Intel Cache** | Caches VirusTotal & PhishTank results to eliminate rate limits |
 | ✅ **Whitelist / 🚫 Blocklist** | Manual domain management from the dashboard |
-| 🚨 **Email Alerts** | Sends Gmail notification when HIGH_RISK threat is detected |
+| 📄 **PDF Reports** | One-click downloadable dark-themed security report |
 
 ---
 
@@ -144,7 +147,10 @@ PhishGuard/
 │   └── utils/
 │       ├── ThreatIntelCache.java        # VT/PT caching layer
 │       ├── ReportGenerator.java         # PDF generation
-│       └── EmailAlerter.java            # Alert emails
+│       ├── EmailAlerter.java            # Alert emails
+│       └── Constants.java               # Global config & weights
+│   ├── monitor/
+│   │   └── ClipboardMonitor.java        # System-wide URL interceptor
 ├── python_service/
 │   ├── app.py                           # Flask CNN API
 │   ├── train_cnn.py                     # Model training
