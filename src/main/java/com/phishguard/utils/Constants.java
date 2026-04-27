@@ -34,7 +34,7 @@ public final class Constants {
 
     // ── Risk Thresholds (overridden by config.properties) ─────────────
     public static final double DEFAULT_THRESHOLD_HIGH       = 0.75;
-    public static final double DEFAULT_THRESHOLD_SUSPICIOUS = 0.50;
+    public static final double DEFAULT_THRESHOLD_SUSPICIOUS = 0.40;
 
     // ── AI Model Trigger Threshold ─────────────────────────────────────
     /** Threat Intel + Visual Analysis only run if aiModelScore exceeds this */

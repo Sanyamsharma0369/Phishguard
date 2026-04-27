@@ -83,12 +83,8 @@ public final class DecisionEngine {
      * Used by scoreFast() in RiskScorer for extension popup calls.
      */
     public static String decide(double score) {
-        ConfigLoader cfg = ConfigLoader.getInstance();
-        double thresholdHigh = cfg.getDouble("risk.threshold.high", Constants.RISK_THRESHOLD_HIGH);
-        double thresholdSusp = cfg.getDouble("risk.threshold.suspicious", Constants.RISK_THRESHOLD_SUSPICIOUS);
-
-        if (score >= thresholdHigh) return Constants.DECISION_HIGH_RISK;
-        if (score >= thresholdSusp) return Constants.DECISION_SUSPICIOUS;
+        if (score >= 0.75) return Constants.DECISION_HIGH_RISK;
+        if (score >= 0.40) return Constants.DECISION_SUSPICIOUS;
         return Constants.DECISION_SAFE;
     }
 
@@ -188,10 +184,9 @@ public final class DecisionEngine {
      * @return confidence label string
      */
     public static String getConfidence(double score) {
-        if (score >= 0.90) return "Very High Confidence";
-        if (score >= 0.75) return "High Confidence";
-        if (score >= 0.50) return "Medium Confidence";
-        if (score >= 0.25) return "Low Confidence";
+        if (score >= 0.85) return "High Confidence";
+        if (score >= 0.65) return "Medium Confidence";
+        if (score >= 0.40) return "Low Confidence";
         return "Very Low Confidence";
     }
 
