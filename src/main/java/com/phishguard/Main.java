@@ -5,15 +5,83 @@ import com.phishguard.database.DBConnection;
 import com.phishguard.detection.AIModelEngine;
 // Removed unused: import com.phishguard.gui.MainWindow;
 import com.phishguard.utils.ConfigLoader;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 
 // Removed unused: import javax.swing.*;
 
 public class Main {
 
+    private static Process flaskProcess = null;
+
+    public static void startFlaskService() {
+        // First check if Flask is already running
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:5000/health"))
+                .timeout(Duration.ofSeconds(2))
+                .GET().build();
+            int status = HttpClient.newHttpClient()
+                .send(req, HttpResponse.BodyHandlers.ofString())
+                .statusCode();
+            if (status == 200) {
+                System.out.println("[Flask] ✅ Already running on port 5000");
+                return;
+            }
+        } catch (Exception ignored) {}
+
+        // Not running — start it
+        System.out.println("[Flask] Starting CNN service...");
+        try {
+            // Detect python command (python3 on Mac/Linux, python on Windows)
+            String pythonCmd = System.getProperty("os.name")
+                .toLowerCase().contains("win") ? "python" : "python3";
+
+            // Path to your Flask app — adjust if needed
+            String flaskPath = "python_service/app.py";
+
+            ProcessBuilder pb = new ProcessBuilder(pythonCmd, flaskPath);
+            pb.redirectErrorStream(true);
+            pb.redirectOutput(ProcessBuilder.Redirect.INHERIT); // Show Flask logs in IntelliJ
+            flaskProcess = pb.start();
+
+            // Wait up to 10 seconds for Flask to be ready
+            System.out.println("[Flask] Waiting for CNN service to start...");
+            for (int i = 0; i < 10; i++) {
+                Thread.sleep(1000);
+                try {
+                    HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:5000/health"))
+                        .timeout(Duration.ofSeconds(1))
+                        .GET().build();
+                    int status = HttpClient.newHttpClient()
+                        .send(req, HttpResponse.BodyHandlers.ofString())
+                        .statusCode();
+                    if (status == 200) {
+                        System.out.println("[Flask] ✅ CNN service started successfully!");
+                        return;
+                    }
+                } catch (Exception ignored) {}
+                System.out.println("[Flask] Waiting... (" + (i + 1) + "/10)");
+            }
+            System.out.println("[Flask] ⚠️ CNN service slow to start — continuing anyway.");
+
+        } catch (Exception e) {
+            System.err.println("[Flask] ❌ Could not start CNN service: " + e.getMessage());
+            System.err.println("[Flask] Start manually: cd python_service && python app.py");
+        }
+    }
+
     public static void main(String[] args) {
         System.out.println("===========================================");
         System.out.println("   PhishGuard v1.0 - Starting Up...       ");
         System.out.println("===========================================");
+
+        // Step 0: Auto-start Flask CNN
+        startFlaskService();
 
         // Step 1: Load config
         try {
@@ -55,8 +123,14 @@ public class Main {
 
             // Shutdown hook
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                System.out.println("[Shutdown] Stopping PhishGuard...");
                 try { wsServer.stop(); }
                 catch (Exception e) { e.printStackTrace(); }
+
+                if (flaskProcess != null && flaskProcess.isAlive()) {
+                    flaskProcess.destroy();
+                    System.out.println("[Flask] CNN service stopped.");
+                }
             }));
         } catch (Exception e) {
             System.err.println("[Main] ✗ WebSocket error: " + e.getMessage());
