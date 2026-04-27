@@ -36,6 +36,8 @@ and blocks phishing threats before you click — with instant browser notificati
 | 🤖 **Model Performance** | Live accuracy metrics (94.7%+) shown on dashboard |
 | 🚨 **Email Alerts** | Sends Gmail notification when HIGH_RISK threat is detected |
 | 🗄️ **Threat Intel Cache** | Caches VirusTotal & PhishTank results to eliminate rate limits |
+| 🔍 **Explainable AI (XAI)**| Shows a "Why Was This Flagged?" breakdown for every threat |
+| 📅 **WHOIS Check** | Detects zero-day phishing via domain age analysis |
 | ✅ **Whitelist / 🚫 Blocklist** | Manual domain management from the dashboard |
 | 📄 **PDF Reports** | One-click downloadable dark-themed security report |
 
@@ -50,7 +52,8 @@ Gmail Inbox (IMAP)
 ┌─────────────────────────────────────────┐
 │          Multi-Layer Analysis           │
 │ ① Weka ML ② CNN ③ VirusTotal          │
-│ ④ PhishTank ⑤ Keyword Analysis          │
+│ ④ PhishTank ⑤ WHOIS Domain Age        │
+│ ⑥ Keyword Analysis ⑦ XAI Explanation   │
 └─────────────────────────────────────────┘
        ↓
  Decision Engine → SAFE / SUSPICIOUS / HIGH_RISK

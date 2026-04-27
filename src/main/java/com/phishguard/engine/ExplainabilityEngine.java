@@ -26,7 +26,9 @@ public class ExplainabilityEngine {
         boolean ptVerified,
         double mlScore,
         double cnnScore,
-        List<String> triggeredKeywords
+        List<String> triggeredKeywords,
+        int whoisAgeDays,
+        String whoisAgeLabel
     ) {
         List<String> red    = new ArrayList<>();
         List<String> yellow = new ArrayList<>();
@@ -143,6 +145,26 @@ public class ExplainabilityEngine {
                 yellow.add("No HTTPS: URL uses unencrypted HTTP connection");
             } else {
                 green.add("HTTPS: URL uses secure encrypted connection");
+            }
+        }
+
+            }
+        }
+
+        // ── Domain Age (WHOIS) ───────────────────────────────────────────────
+        if (whoisAgeDays != -1) {
+            if (whoisAgeDays < 7) {
+                red.add("Domain Age: Registered only " + whoisAgeLabel +
+                        " ago — extremely new domain, very high phishing risk");
+            } else if (whoisAgeDays < 30) {
+                red.add("Domain Age: Registered " + whoisAgeLabel +
+                        " ago — 95% of phishing sites are under 30 days old");
+            } else if (whoisAgeDays < 90) {
+                yellow.add("Domain Age: Registered " + whoisAgeLabel +
+                           " ago — relatively new domain, exercise caution");
+            } else {
+                green.add("Domain Age: Domain registered " + whoisAgeLabel +
+                          " ago — established domain (lower phishing risk)");
             }
         }
 

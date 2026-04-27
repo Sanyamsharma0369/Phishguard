@@ -55,8 +55,10 @@ public class RiskScorer {
 
     // ── Visual analysis detail (set by VisualAnalyzer) ──────────────────
     public String visualBrandDetected = null;
-
-    // ── Constructor ─────────────────────────────────────────────────────
+    public com.phishguard.utils.WhoisChecker.WhoisResult whoisResult = null;
+    public String domainAge = null; // Human-readable age label for UI
+    
+    // ── Constructors ─────────────────────────────────────────────────────
 
     /**
      * Creates a new RiskScorer for a single URL analysis session.
@@ -102,6 +104,18 @@ public class RiskScorer {
             
             // Decision & Mitigation
             com.phishguard.engine.DecisionEngine.decide(this);
+
+            // Layer 6: WHOIS Domain Age (Zero-day protection)
+            com.phishguard.utils.WhoisChecker.WhoisResult whois = com.phishguard.utils.WhoisChecker.check(url);
+            this.whoisResult = whois;
+            this.domainAge = (whois.ageDays() != -1) ? whois.ageLabel() : "Unknown";
+            
+            if (whois.ageDays() != -1) {
+                this.finalScore = Math.min(1.0, Math.max(0.0, this.finalScore + whois.riskBonus()));
+                // Re-run decision if WHOIS bonus pushes it over threshold
+                com.phishguard.engine.DecisionEngine.decide(this);
+            }
+
             com.phishguard.engine.MitigationEngine.mitigate(this);
             
         } catch (Exception e) {

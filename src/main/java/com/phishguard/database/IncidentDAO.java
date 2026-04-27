@@ -46,8 +46,8 @@ public final class IncidentDAO {
                    + "  sender_score, text_score, ai_model_score, "
                    + "  threat_intel_score, visual_score, final_risk_score, "
                    + "  ai_decision, phishtank_confirmed, virustotal_detections, "
-                   + "  visual_brand_detected, action_taken"
-                   + ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                   + "  visual_brand_detected, action_taken, domain_age"
+                   + ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
         try {
             Connection conn = DBConnection.getInstance().getConnection();
@@ -66,6 +66,7 @@ public final class IncidentDAO {
                 ps.setInt(12,   scorer.virusTotalDetections);
                 ps.setString(13, scorer.visualBrandDetected);
                 ps.setString(14, scorer.actionTaken);
+                ps.setString(15, scorer.domainAge != null ? scorer.domainAge : "Unknown");
                 ps.executeUpdate();
             }
 
@@ -120,6 +121,7 @@ public final class IncidentDAO {
                         s.virusTotalDetections = rs.getInt("virustotal_detections");
                         s.visualBrandDetected  = rs.getString("visual_brand_detected");
                         s.actionTaken          = rs.getString("action_taken");
+                        s.domainAge            = rs.getString("domain_age");
                         incidents.add(s);
                     }
                 }

@@ -99,6 +99,8 @@ public class DBConnection {
                 m.put("decision",  rs.getString("decision"));
                 m.put("keywords",  rs.getString("keywords") != null ? 
                                    rs.getString("keywords") : "");
+                m.put("domainAge", rs.getString("domain_age") != null ?
+                                   rs.getString("domain_age") : "Unknown");
                 return m;
             }
         } catch (Exception e) { e.printStackTrace(); }

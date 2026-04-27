@@ -202,6 +202,10 @@ public class WebApiController {
                 boolean ptPhish  = cache.map(c -> c.ptIsPhishing()).orElse(false);
                 boolean ptVerify = cache.map(c -> c.ptVerified()).orElse(false);
 
+                // WHOIS Lookup
+                com.phishguard.utils.WhoisChecker.WhoisResult whois = 
+                    com.phishguard.utils.WhoisChecker.check(url);
+
                 // Parse keywords from stored incident
                 String kwStr = incident.getOrDefault("keywords", "").toString();
                 List<String> keywords = kwStr.isBlank() ? List.of() :
@@ -209,7 +213,8 @@ public class WebApiController {
 
                 var explanation = ExplainabilityEngine.explain(
                     url, sender, vtScore, vtPositives, vtTotal,
-                    ptPhish, ptVerify, score, score * 0.9, keywords
+                    ptPhish, ptVerify, score, score * 0.9, keywords,
+                    whois.ageDays(), whois.ageLabel()
                 );
 
                 return new Gson().toJson(Map.of(
@@ -217,7 +222,9 @@ public class WebApiController {
                     "redFlags",   explanation.redFlags(),
                     "yellowFlags",explanation.yellowFlags(),
                     "greenFlags", explanation.greenFlags(),
-                    "totalRed",   explanation.totalRedFlags()
+                    "totalRed",   explanation.totalRedFlags(),
+                    "domainAge",  whois.ageLabel(),
+                    "registeredOn", whois.registeredDate()
                 ));
 
             } catch (Exception e) {

@@ -572,7 +572,9 @@ function rI(){
   tb.innerHTML=fl.map(i=>{
     const sc=gs(i);
     const conf=getConfidence(sc);
-    return '<tr><td class="col-time">'+ft(i.timestamp)+'</td><td class="col-url" title="'+esc(i.url||'')+'">'+esc(i.url||'N/A')+'</td><td class="col-sender">'+esc(gn(i))+'</td><td>'+rb(sc)+'</td><td>'+db(i.decision||'SAFE')+'</td><td style="display:flex;align-items:center;gap:12px"><span style="font-size:11px;color:var(--muted)">'+esc(conf)+'</span><button onclick="showExplanation('+i.id+')" style="background:rgba(88,166,255,0.1);border:1px solid rgba(88,166,255,0.3);color:#58a6ff;padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer;white-space:nowrap">🔍 Why?</button></td></tr>';
+    const ageBadge = (i.domainAge && i.domainAge !== 'Unknown') ? 
+        `<span style="font-size:10px;background:rgba(248,81,73,0.15);color:#f85149;padding:2px 6px;border-radius:10px;margin-left:4px;white-space:nowrap" title="Domain age">📅 ${i.domainAge}</span>` : '';
+    return '<tr><td class="col-time">'+ft(i.timestamp)+'</td><td class="col-url" title="'+esc(i.url||'')+'">'+esc(i.url||'N/A')+'</td><td class="col-sender">'+esc(gn(i))+'</td><td>'+rb(sc)+'</td><td>'+db(i.decision||'SAFE')+'</td><td style="display:flex;align-items:center;gap:12px"><span style="font-size:11px;color:var(--muted)">'+esc(conf)+'</span>'+ageBadge+'<button onclick="showExplanation('+i.id+')" style="background:rgba(88,166,255,0.1);border:1px solid rgba(88,166,255,0.3);color:#58a6ff;padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer;white-space:nowrap">🔍 Why?</button></td></tr>';
   }).join('')
 }
 
@@ -935,6 +937,13 @@ async function showExplanation(incidentId) {
             .then(r => r.json());
 
         document.getElementById('explain-summary').textContent = data.summary;
+
+        if (data.registeredOn && data.registeredOn !== 'Unknown') {
+            document.getElementById('explain-summary').insertAdjacentHTML('beforeend', 
+                `<div style="margin-top:8px;font-size:11px;color:#888;border-top:1px solid rgba(255,255,255,0.05);padding-top:8px">
+                    📅 Registered on: <strong style="color:#ccc">${data.registeredOn}</strong> (${data.domainAge})
+                 </div>`);
+        }
 
         const makeFlag = (text, color, bg) => `
             <div style="background:${bg};border:1px solid ${color}33;border-radius:6px;
