@@ -78,6 +78,19 @@ public final class DecisionEngine {
 
         return scorer;
     }
+    /**
+     * Light classification: returns just the decision string based on a score.
+     * Used by scoreFast() in RiskScorer for extension popup calls.
+     */
+    public static String decide(double score) {
+        ConfigLoader cfg = ConfigLoader.getInstance();
+        double thresholdHigh = cfg.getDouble("risk.threshold.high", Constants.RISK_THRESHOLD_HIGH);
+        double thresholdSusp = cfg.getDouble("risk.threshold.suspicious", Constants.RISK_THRESHOLD_SUSPICIOUS);
+
+        if (score >= thresholdHigh) return Constants.DECISION_HIGH_RISK;
+        if (score >= thresholdSusp) return Constants.DECISION_SUSPICIOUS;
+        return Constants.DECISION_SAFE;
+    }
 
     // ── Human-readable explanation ───────────────────────────────────────
 
