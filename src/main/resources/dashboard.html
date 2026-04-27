@@ -547,7 +547,7 @@ function go(id,b){document.querySelectorAll('.page').forEach(p=>p.classList.remo
 function rc(s){return s>=.75?'var(--red)':s>=.5?'var(--orange)':'var(--green)'}
 function db(d){const m={HIGH_RISK:'dec-h',SUSPICIOUS:'dec-p',SAFE:'dec-s',BLOCKED:'dec-h'};return'<span class="dec '+(m[d]||'dec-s')+'">'+esc(d)+'</span>'}
 function rb(s){const p=Math.min(100,s*100).toFixed(0),c=rc(s);return'<div class="rbar"><div class="rtrack"><div class="rfill" style="width:'+p+'%;background:'+c+'"></div></div><span class="rval" style="color:'+c+'">'+s.toFixed(3)+'</span></div>'}
-function ft(t){if(!t)return'\u2014';return new Date(t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}
+function ft(t){if(!t)return'\u2014';return new Date(t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}
 function gs(i){return i.finalScore!=null?i.finalScore:i.aiModelScore||0}
 function gn(i){return i.emailSender||i.senderEmail||'\u2014'}
 

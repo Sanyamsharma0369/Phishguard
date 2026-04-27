@@ -122,6 +122,13 @@ public final class IncidentDAO {
                         s.visualBrandDetected  = rs.getString("visual_brand_detected");
                         s.actionTaken          = rs.getString("action_taken");
                         s.domainAge            = rs.getString("domain_age");
+                        
+                        // Set the actual timestamp from DB instead of using LocalDateTime.now()
+                        java.sql.Timestamp ts = rs.getTimestamp("timestamp");
+                        if (ts != null) {
+                            s.timestamp = ts.toLocalDateTime();
+                        }
+                        
                         incidents.add(s);
                     }
                 }
