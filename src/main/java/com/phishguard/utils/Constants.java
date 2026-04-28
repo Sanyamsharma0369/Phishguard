@@ -33,7 +33,7 @@ public final class Constants {
     public static final double WEIGHT_VISUAL    = 0.10;
 
     // ── Risk Thresholds (overridden by config.properties) ─────────────
-    public static final double DEFAULT_THRESHOLD_HIGH       = 0.75;
+    public static final double DEFAULT_THRESHOLD_HIGH       = 0.70;
     public static final double DEFAULT_THRESHOLD_SUSPICIOUS = 0.40;
 
     // ── AI Model Trigger Threshold ─────────────────────────────────────
@@ -69,9 +69,10 @@ public final class Constants {
     public static final String DECISION_SAFE        = "SAFE";
 
     // ── Actions Taken ──────────────────────────────────────────────────
-    public static final String ACTION_BLOCKED  = "BLOCKED";
-    public static final String ACTION_WARNED   = "WARNED";
-    public static final String ACTION_ALLOWED  = "ALLOWED";
+    public static final String ACTION_BLOCKED      = "BLOCKED";
+    public static final String ACTION_QUARANTINED  = "QUARANTINED";
+    public static final String ACTION_WARNED       = "WARNED";
+    public static final String ACTION_ALLOWED      = "ALLOWED";
 
     // ── Log Severity Levels ────────────────────────────────────────────
     public static final String SEV_INFO     = "INFO";

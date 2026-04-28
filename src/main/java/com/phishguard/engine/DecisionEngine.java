@@ -2,6 +2,8 @@ package com.phishguard.engine;
 
 import com.phishguard.utils.ConfigLoader;
 import com.phishguard.utils.Constants;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 
 /**
  * PhishGuard - DecisionEngine.java
@@ -10,7 +12,7 @@ import com.phishguard.utils.Constants;
  *
  * DECISION RULES (from config.properties, fallback to Constants defaults):
  *   finalScore >= risk.threshold.high       → HIGH_RISK → BLOCKED
- *   finalScore >= risk.threshold.suspicious → SUSPICIOUS → WARNED
+ *   finalScore >= risk.threshold.suspicious → SUSPICIOUS → QUARANTINED/WARNED
  *   finalScore <  risk.threshold.suspicious → SAFE → ALLOWED
  *
  * This class is stateless — all methods are static.
@@ -49,8 +51,7 @@ public final class DecisionEngine {
         double thresholdSusp = cfg.getDouble("risk.threshold.suspicious",
                 Constants.RISK_THRESHOLD_SUSPICIOUS);
 
-        // Step 3: Brand spoofing override — elevate effectiveScore only,
-        //         do NOT mutate scorer.finalScore to preserve audit accuracy
+        // Step 3: Brand spoofing override
         double effectiveScore = scorer.finalScore;
         if (scorer.visualBrandDetected != null
                 && !scorer.visualBrandDetected.isBlank()
@@ -62,21 +63,43 @@ public final class DecisionEngine {
         if (effectiveScore >= thresholdHigh) {
             scorer.decision    = Constants.DECISION_HIGH_RISK;
             scorer.actionTaken = Constants.ACTION_BLOCKED;
+            // AUTO-BLOCK: add to manual_blocks with auto flag
+            autoBlock(scorer.url, scorer.senderEmail);
 
         } else if (effectiveScore >= thresholdSusp) {
             scorer.decision    = Constants.DECISION_SUSPICIOUS;
-            scorer.actionTaken = Constants.ACTION_WARNED;
+            scorer.actionTaken = Constants.ACTION_QUARANTINED;
 
         } else {
             scorer.decision    = Constants.DECISION_SAFE;
             scorer.actionTaken = Constants.ACTION_ALLOWED;
         }
 
-        // Step 5: Log decision (show both raw and effective scores)
+        // Step 5: Log decision
         System.out.printf("[DecisionEngine] Score=%.4f → %-10s → %s%n",
                 scorer.finalScore, scorer.decision, scorer.actionTaken);
 
         return scorer;
+    }
+
+    private static void autoBlock(String url, String sender) {
+        try {
+            // Extract domain and add to manual_blocks table
+            String domain = new java.net.URL(url).getHost()
+                .replaceFirst("^www\\.", "").toLowerCase();
+            
+            String sql = "INSERT IGNORE INTO manual_blocks (domain, reason, auto_blocked) VALUES (?, ?, ?)";
+            try (Connection c = com.phishguard.database.DBConnection.getInstance().getConnection();
+                 PreparedStatement ps = c.prepareStatement(sql)) {
+                ps.setString(1, domain);
+                ps.setString(2, "AUTO: High risk score (sent by " + (sender != null ? sender : "unknown") + ")");
+                ps.setInt(3, 1);
+                ps.executeUpdate();
+            }
+            System.out.println("[AutoBlock] Domain blocked: " + domain);
+        } catch (Exception e) {
+            System.err.println("[AutoBlock] Error: " + e.getMessage());
+        }
     }
     /**
      * Light classification: returns just the decision string based on a score.

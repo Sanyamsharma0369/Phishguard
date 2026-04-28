@@ -52,7 +52,7 @@ public final class IncidentDAO {
         try {
             Connection conn = DBConnection.getInstance().getConnection();
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1,  scorer.emailSender);
+                ps.setString(1,  scorer.senderEmail);
                 ps.setString(2,  scorer.emailSubject);
                 ps.setString(3,  scorer.url);
                 ps.setDouble(4,  scorer.senderScore);

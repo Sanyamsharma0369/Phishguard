@@ -264,7 +264,7 @@ public class LogViewerPanel extends JPanel {
             tableModel.addRow(new Object[]{
                 rowNum++,
                 s.timestamp != null ? s.timestamp.toString() : "—",
-                s.emailSender != null ? s.emailSender : "—",
+                s.senderEmail != null ? s.senderEmail : "—",
                 s.url != null && s.url.length() > 60 ? s.url.substring(0, 57) + "..." : s.url,
                 String.format("%.3f", s.finalScore),
                 s.decision
@@ -340,7 +340,7 @@ public class LogViewerPanel extends JPanel {
 
             addAttr(center, "URL:", scorer.url);
             addAttr(center, "Timestamp:", scorer.timestamp != null ? scorer.timestamp.toString() : "N/A");
-            addAttr(center, "Sender:", scorer.emailSender != null ? scorer.emailSender : "Unknown");
+            addAttr(center, "Sender:", scorer.senderEmail != null ? scorer.senderEmail : "Unknown");
             addAttr(center, "Action Taken:", scorer.actionTaken != null ? scorer.actionTaken : "None");
             center.add(Box.createVerticalStrut(16));
 

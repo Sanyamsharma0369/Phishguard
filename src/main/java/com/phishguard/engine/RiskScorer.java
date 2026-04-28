@@ -26,7 +26,7 @@ public class RiskScorer {
 
     // ── Input metadata ──────────────────────────────────────────────────
     public String url;
-    public String emailSender;
+    public String senderEmail;
     public String emailSubject;
     public LocalDateTime timestamp;
 
@@ -67,15 +67,15 @@ public class RiskScorer {
      * @param emailSender  sender address of the containing email
      * @param emailSubject subject line of the containing email
      */
-    public RiskScorer(String url, String emailSender, String emailSubject) {
+    public RiskScorer(String url, String senderEmail, String emailSubject) {
         this.url          = url;
-        this.emailSender  = emailSender;
+        this.senderEmail  = senderEmail;
         this.emailSubject = emailSubject;
         this.timestamp    = LocalDateTime.now();
     }
 
-    public RiskScorer(String url, String emailSender) {
-        this(url, emailSender, "System/Manual Scan");
+    public RiskScorer(String url, String senderEmail) {
+        this(url, senderEmail, "System/Manual Scan");
     }
 
     /**
@@ -132,7 +132,7 @@ public class RiskScorer {
      */
     public void scoreFast(String url, String sender, String source) {
         this.url = url;
-        this.emailSender = sender;
+        this.senderEmail = sender;
         try {
             // Layer 1: ML only
             this.aiModelScore = com.phishguard.detection.AIModelEngine.predict(url);
@@ -214,7 +214,7 @@ public class RiskScorer {
             decision,
             finalScore,
             url != null ? url : "N/A",
-            emailSender != null ? emailSender : "unknown"
+            senderEmail != null ? senderEmail : "unknown"
         );
     }
 
@@ -241,7 +241,7 @@ public class RiskScorer {
             "║ ACTION     : %-39s   ║%n" +
             "╚═════════════════════════════════════════════════════╝",
             truncate(url, 47),
-            truncate(emailSender, 47),
+            truncate(senderEmail, 47),
             truncate(emailSubject, 47),
             Constants.WEIGHT_SENDER,    senderScore,
             Constants.WEIGHT_TEXT,      textScore,

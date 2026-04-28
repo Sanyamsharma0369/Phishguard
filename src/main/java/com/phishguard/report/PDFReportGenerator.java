@@ -222,7 +222,7 @@ public final class PDFReportGenerator {
         t.setSpacingBefore(5);
         t.setSpacingAfter(5);
 
-        addDetailRow(t, "Sender",           s.emailSender   != null ? s.emailSender : "—");
+        addDetailRow(t, "Sender",           s.senderEmail   != null ? s.senderEmail : "—");
         addDetailRow(t, "Subject",          s.emailSubject  != null ? s.emailSubject : "—");
         addDetailRow(t, "Final Score",      String.format("%.4f", s.finalScore));
         addDetailRow(t, "Action",           s.actionTaken   != null ? s.actionTaken : "—");

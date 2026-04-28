@@ -392,7 +392,7 @@ public class DashboardPanel extends JPanel {
                     recentModel.setRowCount(0);
                     for (RiskScorer s : recent) {
                         recentModel.addRow(new Object[]{
-                            s.emailSender != null ? s.emailSender : "—",
+                            s.senderEmail != null ? s.senderEmail : "—",
                             s.url.length() <= 80 ? s.url : s.url.substring(0, 77) + "...",
                             String.format("%.3f", s.finalScore),
                             s.decision

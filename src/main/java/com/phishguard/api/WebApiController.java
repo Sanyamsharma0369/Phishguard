@@ -736,12 +736,9 @@ public class WebApiController {
                     return "{\"error\":\"Incident not found\"}";
                 }
 
-                double riskScore = rs.getDouble("final_risk_score");
                 String decision  = rs.getString("ai_decision");
                 String url       = rs.getString("url_found");
                 double mlScore   = rs.getDouble("ai_model_score");
-                double txtScore  = rs.getDouble("text_score");
-                double vtScore   = rs.getDouble("threat_intel_score");
                 int vtCount      = rs.getInt("virustotal_detections");
                 boolean ptPhish  = rs.getBoolean("phishtank_confirmed");
                 double cnnScore  = rs.getDouble("visual_score");
