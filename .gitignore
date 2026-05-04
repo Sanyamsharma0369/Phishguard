@@ -28,3 +28,8 @@ __pycache__/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Temporary / Scratch files
+src/main/java/com/phishguard/scratch/
+scratch/
+*.tmp
