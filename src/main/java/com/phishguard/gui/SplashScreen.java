@@ -129,7 +129,7 @@ public class SplashScreen extends JWindow {
         
         g2.setFont(new Font("Segoe UI", Font.BOLD, 42));
         FontMetrics fm = g2.getFontMetrics();
-        String logoText = "🛡 PhishGuard";
+        String logoText = "PhishGuard";
         int lx = cx - fm.stringWidth(logoText) / 2;
         UITheme.drawGlowText(g2, logoText, lx, cy, new Font("Segoe UI", Font.BOLD, 42), logoC);
         

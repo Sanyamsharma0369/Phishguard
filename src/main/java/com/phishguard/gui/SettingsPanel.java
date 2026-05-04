@@ -26,7 +26,7 @@ public class SettingsPanel extends JPanel {
         setBackground(UITheme.BG_PRIMARY);
         setBorder(BorderFactory.createEmptyBorder(40, 60, 40, 60));
 
-        JLabel header = new JLabel("⚙ Settings & Configuration");
+        JLabel header = new JLabel("Settings & Configuration");
         header.setFont(UITheme.FONT_TITLE);
         header.setForeground(Color.WHITE);
         header.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
@@ -58,7 +58,7 @@ public class SettingsPanel extends JPanel {
     }
 
     private JPanel buildLeftColumn() {
-        JPanel card = createCard("🧠 AI Confidence Thresholds");
+        JPanel card = createCard("AI Confidence Thresholds");
         
         sliderHigh = new MinimalSlider(0.50, 1.00, 0.85, true);
         card.add(createLabeledControl("High Risk Threshold", sliderHigh));
@@ -75,7 +75,7 @@ public class SettingsPanel extends JPanel {
     }
 
     private JPanel buildRightColumn() {
-        JPanel card = createCard("⚙ System Settings");
+        JPanel card = createCard("System Settings");
         
         toggleVisual = new IOSSwitch(true);
         card.add(createLabeledControl("Enable Visual Core (CNN)", toggleVisual));
@@ -140,7 +140,7 @@ public class SettingsPanel extends JPanel {
     }
 
     private JButton createSaveButton() {
-        JButton btn = new JButton("💾 Save Settings") {
+        JButton btn = new JButton("Save Settings") {
             private boolean hover = false;
             {
                 addMouseListener(new MouseAdapter() {
@@ -212,7 +212,7 @@ public class SettingsPanel extends JPanel {
                 try {
                     get();
                     lblStatus.setForeground(UITheme.SAFE_GREEN);
-                    lblStatus.setText("✓ Settings saved successfully");
+                    lblStatus.setText("Settings saved successfully");
                     ConfigLoader.getInstance().reload();
                     
                     try {
@@ -225,7 +225,7 @@ public class SettingsPanel extends JPanel {
                     
                 } catch (Exception ex) {
                     lblStatus.setForeground(UITheme.DANGER_RED);
-                    lblStatus.setText("✗ Save failed: " + ex.getMessage());
+                    lblStatus.setText("Save failed: " + ex.getMessage());
                 }
             }
         }.execute();

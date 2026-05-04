@@ -38,7 +38,7 @@ public class NotificationServer extends WebSocketServer {
         // Send welcome ping
         conn.send(GSON.toJson(Map.of(
             "type", "CONNECTED",
-            "message", "PhishGuard WebSocket connected ✅",
+            "message", "PhishGuard WebSocket connected",
             "timestamp", System.currentTimeMillis()
         )));
     }

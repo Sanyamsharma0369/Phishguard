@@ -1,6 +1,6 @@
 package com.phishguard.detection;
 
-import com.phishguard.utils.WHOISLookup;
+import com.phishguard.utils.WhoisChecker;
 
 import java.util.Arrays;
 import java.util.List;
@@ -83,8 +83,9 @@ public final class SenderAnalyzer {
             }
         }
 
-        // ── Signal 2: Domain age via WHOIS ──────────────────────────────
-        int ageDays = WHOISLookup.getDomainAgeDays(domain);
+        // ── Signal 2: Domain age via WhoisChecker ──────────────────────────────
+        WhoisChecker.WhoisResult whoisRes = WhoisChecker.check(domain);
+        int ageDays = whoisRes.ageDays();
         System.out.println("[SenderAnalyzer] Domain age: " + ageDays + " days");
         if (ageDays < 30) {
             score += W_DOMAIN_AGE_YOUNG;
@@ -154,7 +155,8 @@ public final class SenderAnalyzer {
      */
     public static String getAnalysisReport(String senderEmail, String displayName) {
         String domain = extractDomain(senderEmail);
-        int ageDays   = WHOISLookup.getDomainAgeDays(domain);
+        WhoisChecker.WhoisResult whoisRes = WhoisChecker.check(domain);
+        int ageDays = whoisRes.ageDays();
 
         StringBuilder sb = new StringBuilder();
         sb.append("SenderAnalyzer Report:\n");

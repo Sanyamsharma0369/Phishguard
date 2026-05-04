@@ -1,6 +1,6 @@
 @echo off
 echo ==========================================
-echo   🛡️  Starting PhishGuard
+echo   Starting PhishGuard
 echo ==========================================
 echo.
 echo Flask CNN will be auto-started by Java.

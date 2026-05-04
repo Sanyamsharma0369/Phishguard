@@ -1,4 +1,4 @@
-# PhishGuard — AI Phishing Defense Technical Documentation
+# PhishGuard - AI Phishing Defense Technical Documentation
 
 ## 1. Project Overview
 **PhishGuard** is an advanced, multi-layered phishing detection and mitigation system designed to protect users from malicious URLs across various vectors (Emails, Clipboard, and Manual Input). 

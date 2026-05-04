@@ -28,7 +28,7 @@ public class Main {
                 .send(req, HttpResponse.BodyHandlers.ofString())
                 .statusCode();
             if (status == 200) {
-                System.out.println("[Flask] ✅ Already running on port 5000");
+                System.out.println("[Flask] Already running on port 5000");
                 return;
             }
         } catch (Exception ignored) {}
@@ -61,16 +61,16 @@ public class Main {
                         .send(req, HttpResponse.BodyHandlers.ofString())
                         .statusCode();
                     if (status == 200) {
-                        System.out.println("[Flask] ✅ CNN service started successfully!");
+                        System.out.println("[Flask] CNN service started successfully!");
                         return;
                     }
                 } catch (Exception ignored) {}
                 System.out.println("[Flask] Waiting... (" + (i + 1) + "/10)");
             }
-            System.out.println("[Flask] ⚠️ CNN service slow to start — continuing anyway.");
+            System.out.println("[Flask] CNN service slow to start - continuing anyway.");
 
         } catch (Exception e) {
-            System.err.println("[Flask] ❌ Could not start CNN service: " + e.getMessage());
+            System.err.println("[Flask] Could not start CNN service: " + e.getMessage());
             System.err.println("[Flask] Start manually: cd python_service && python app.py");
         }
     }
@@ -90,29 +90,29 @@ public class Main {
                 config.reload();
             }
             config.printSummary();
-            System.out.println("[Main] ✓ Configuration loaded");
+            System.out.println("[Main] Configuration loaded");
         } catch (Exception e) {
-            System.err.println("[Main] ✗ Config error: " + e.getMessage());
+            System.err.println("[Main] Config error: " + e.getMessage());
         }
 
         // Step 2: Connect to database
         try {
             DBConnection db = DBConnection.getInstance();
             db.getConnection();
-            System.out.println("[Main] ✓ Database connected");
+            System.out.println("[Main] Database connected");
             com.phishguard.utils.ThreatIntelCache.purgeExpired();
             System.out.println("[Cache] Threat Intel Cache initialized.");
         } catch (Exception e) {
-            System.err.println("[Main] ✗ Database error: " + e.getMessage());
+            System.err.println("[Main] Database error: " + e.getMessage());
         }
 
         // Step 3: Load AI models
         try {
             AIModelEngine.loadModels();
-            System.out.println("[Main] ✓ AI models loaded (fallback="
+            System.out.println("[Main] AI models loaded (fallback="
                     + AIModelEngine.isFallbackMode() + ")");
         } catch (Exception e) {
-            System.err.println("[Main] ✗ AI model error: " + e.getMessage());
+            System.err.println("[Main] AI model error: " + e.getMessage());
         }
 
         // ── Start WebSocket Notification Server ──────────────────────────────────
@@ -133,15 +133,15 @@ public class Main {
                 }
             }));
         } catch (Exception e) {
-            System.err.println("[Main] ✗ WebSocket error: " + e.getMessage());
+            System.err.println("[Main] WebSocket error: " + e.getMessage());
         }
 
         // Step 4: Start Web API (WebSocketHandler registers itself inside WebApiController)
         try {
             WebApiController.init();
-            System.out.println("[Main] ✓ Web API running at http://localhost:8080");
+            System.out.println("[Main] Web API running at http://localhost:8080");
         } catch (Exception e) {
-            System.err.println("[Main] ✗ Web API error: " + e.getMessage());
+            System.err.println("[Main] Web API error: " + e.getMessage());
         }
 
         // Step 5: Launch GUI (disabled per user request)
@@ -153,7 +153,7 @@ public class Main {
             } catch (Exception ignored) {}
             MainWindow window = new MainWindow();
             window.setVisible(true);
-            System.out.println("[Main] ✓ GUI launched");
+            System.out.println("[Main] GUI launched");
         });
         */
 
@@ -179,7 +179,7 @@ public class Main {
             cm.start();
             Runtime.getRuntime().addShutdownHook(new Thread(cm::stop));
         } catch (Exception e) {
-            System.err.println("[Main] ✗ Clipboard monitor error: " + e.getMessage());
+            System.err.println("[Main] Clipboard monitor error: " + e.getMessage());
         }
 
         // Keep main thread alive so Spark (daemon thread) doesn't die

@@ -51,7 +51,7 @@ public class ScannerPanel extends JPanel {
         top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
         top.setOpaque(false);
 
-        JLabel header = new JLabel("🔍 URL Security Scanner");
+        JLabel header = new JLabel("URL Security Scanner");
         header.setFont(UITheme.FONT_TITLE);
         header.setForeground(Color.WHITE);
         header.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -107,7 +107,7 @@ public class ScannerPanel extends JPanel {
         urlInput.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
         urlInput.addActionListener(e -> startScan());
 
-        scanBtn = new ScanButton("⚡ Analyze");
+        scanBtn = new ScanButton("Analyze");
         scanBtn.addActionListener(e -> startScan());
         
         JPanel iw = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
@@ -124,7 +124,7 @@ public class ScannerPanel extends JPanel {
         progressRow.setVisible(false);
         
         String[] layerNames = {"Sender", "Text NLP", "AI Model", "Threat Intel", "Visual CNN"};
-        String[] emojis = {"📩", "📝", "🤖", "🌐", "👁"};
+        String[] emojis = {"Sender", "Text", "AI", "Intel", "Visual"};
         steps = new StepIndicator[5];
         for (int i = 0; i < 5; i++) {
             steps[i] = new StepIndicator(emojis[i], layerNames[i]);
@@ -230,20 +230,20 @@ public class ScannerPanel extends JPanel {
         resultsPanel.setVisible(true);
         
         breakdownContainer.removeAll();
-        addBreakdownRow("🔍 Sender Analysis", scorer.senderScore);
-        addBreakdownRow("📝 Text NLP", scorer.textScore);
-        addBreakdownRow("🤖 AI Model", scorer.aiModelScore);
-        addBreakdownRow("🌐 Threat Intel", scorer.threatIntelScore);
-        addBreakdownRow("👁 Visual CNN", scorer.visualScore);
+        addBreakdownRow("Sender Analysis", scorer.senderScore);
+        addBreakdownRow("Text NLP", scorer.textScore);
+        addBreakdownRow("AI Model", scorer.aiModelScore);
+        addBreakdownRow("Threat Intel", scorer.threatIntelScore);
+        addBreakdownRow("Visual CNN", scorer.visualScore);
         
         scoreGauge.setScore(scorer.finalScore);
         
         if (Constants.DECISION_HIGH_RISK.equals(scorer.decision)) {
-            decisionBanner.setInfo("🚫  BLOCKED — URL quarantined automatically", UITheme.DANGER_RED, new Color(45, 0, 8), new Color(61, 0, 16));
+            decisionBanner.setInfo("BLOCKED — URL quarantined automatically", UITheme.DANGER_RED, new Color(45, 0, 8), new Color(61, 0, 16));
         } else if (Constants.DECISION_SUSPICIOUS.equals(scorer.decision)) {
-            decisionBanner.setInfo("⚠️  SUSPICIOUS — Proceed with caution", UITheme.WARN_ORANGE, new Color(45, 26, 0), new Color(61, 37, 0));
+            decisionBanner.setInfo("SUSPICIOUS — Proceed with caution", UITheme.WARN_ORANGE, new Color(45, 26, 0), new Color(61, 37, 0));
         } else {
-            decisionBanner.setInfo("✅  SAFE — No threats detected", UITheme.SAFE_GREEN, new Color(0, 26, 13), new Color(0, 51, 25));
+            decisionBanner.setInfo("SAFE — No threats detected", UITheme.SAFE_GREEN, new Color(0, 26, 13), new Color(0, 51, 25));
         }
 
         resultsPanel.setLocation(resultsPanel.getX(), 40);
@@ -303,9 +303,9 @@ public class ScannerPanel extends JPanel {
         
         JLabel iL = new JLabel();
         iL.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 14));
-        if(sc >= 0.85) iL.setText("🚫");
-        else if(sc >= 0.5) iL.setText("⚠️");
-        else iL.setText("✅");
+        if(sc >= 0.85) iL.setText("B");
+        else if(sc >= 0.5) iL.setText("S");
+        else iL.setText("V");
         iL.setHorizontalAlignment(SwingConstants.CENTER);
         iL.setPreferredSize(new Dimension(40, 40));
         

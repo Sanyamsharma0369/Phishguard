@@ -78,7 +78,7 @@ public final class MitigationEngine {
             "URL: " + scorer.url + " | Score: " + String.format("%.4f", scorer.finalScore));
 
         // 4. Console alert (Phase 6 will add JOptionPane dialog here)
-        System.out.println("🚫 [BLOCKED] HIGH RISK URL: " + scorer.url);
+        System.out.println("[BLOCKED] HIGH RISK URL: " + scorer.url);
         System.out.println("   Risk Score : " + String.format("%.4f", scorer.finalScore));
         System.out.println("   Domain quarantined: " + domain);
     }
@@ -96,7 +96,7 @@ public final class MitigationEngine {
         LogDAO.warning("SUSPICIOUS_URL",
             "URL: " + scorer.url + " | Score: " + String.format("%.4f", scorer.finalScore));
 
-        System.out.println("⚠️  [WARNED] SUSPICIOUS URL: " + scorer.url);
+        System.out.println("[WARNED] SUSPICIOUS URL: " + scorer.url);
         System.out.println("   Risk Score : " + String.format("%.4f", scorer.finalScore));
         // Phase 6: AlertDialog.showWarning(scorer);
     }
@@ -114,6 +114,6 @@ public final class MitigationEngine {
         LogDAO.info("URL_ALLOWED",
             "URL: " + scorer.url + " | Score: " + String.format("%.4f", scorer.finalScore));
 
-        System.out.println("✅ [ALLOWED] SAFE URL: " + scorer.url);
+        System.out.println("[ALLOWED] SAFE URL: " + scorer.url);
     }
 }

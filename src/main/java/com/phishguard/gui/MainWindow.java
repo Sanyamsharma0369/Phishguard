@@ -115,10 +115,10 @@ public class MainWindow extends JFrame {
 
         // Center: Navigation
         JPanel[] navItems = new JPanel[4];
-        navItems[0] = createNavItem("📊", "Dashboard", true);
-        navItems[1] = createNavItem("🔍", "Scanner", false);
-        navItems[2] = createNavItem("📋", "Incidents", false);
-        navItems[3] = createNavItem("⚙️", "Settings", false);
+        navItems[0] = createNavItem("", "Dashboard", true);
+        navItems[1] = createNavItem("", "Scanner", false);
+        navItems[2] = createNavItem("", "Incidents", false);
+        navItems[3] = createNavItem("", "Settings", false);
         
         String[] cards = {"dashboard", "scanner", "logs", "settings"};
         
@@ -146,8 +146,8 @@ public class MainWindow extends JFrame {
         bot.setLayout(new BoxLayout(bot, BoxLayout.Y_AXIS));
         bot.setBorder(BorderFactory.createEmptyBorder(20, 10, 30, 10));
 
-        startBtn = new MonitorButton("▶ Start Monitor", UITheme.SAFE_GREEN);
-        stopBtn  = new MonitorButton("⏹ Stop Monitor", UITheme.DANGER_RED);
+        startBtn = new MonitorButton("Start Monitor", UITheme.SAFE_GREEN);
+        stopBtn  = new MonitorButton("Stop Monitor", UITheme.DANGER_RED);
         stopBtn.setEnabled(false);
 
         startBtn.addActionListener(e -> startMonitor());
@@ -279,7 +279,7 @@ public class MainWindow extends JFrame {
         bar.setPreferredSize(new Dimension(0, 30));
         bar.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, UITheme.BORDER_COLOR));
 
-        statusLabel = new JLabel("  🔴 Monitoring Stopped  |  Scanned: 0  |  Threats: 0  |  Blocked: 0  |  v" + Constants.APP_VERSION);
+        statusLabel = new JLabel("  Monitoring Stopped  |  Scanned: 0  |  Threats: 0  |  Blocked: 0  |  v" + Constants.APP_VERSION);
         statusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         statusLabel.setForeground(UITheme.TEXT_MUTED);
         bar.add(statusLabel, BorderLayout.WEST);
@@ -302,7 +302,7 @@ public class MainWindow extends JFrame {
         int  dbIncidents     = IncidentDAO.getIncidentsByDecision(Constants.DECISION_HIGH_RISK);
 
         statusLabel.setText(
-            (monitorRunning ? "  🟢 Monitoring Active" : "  🔴 Monitoring Stopped")
+            (monitorRunning ? "  Monitoring Active" : "  Monitoring Stopped")
             + "  |  Scanned: " + emailsProcessed
             + "  |  Threats: "    + threatsFound
             + "  |  Blocked: "     + dbIncidents

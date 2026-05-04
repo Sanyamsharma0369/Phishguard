@@ -13,6 +13,7 @@ import jakarta.mail.Message;
 import jakarta.mail.Session;
 import jakarta.mail.Store;
 import jakarta.mail.search.FlagTerm;
+import jakarta.mail.MessagingException;
 import com.phishguard.database.DBConnection;
 
 import java.sql.Connection;
@@ -62,7 +63,7 @@ public class EmailMonitor implements Runnable {
         ConfigLoader cfg       = ConfigLoader.getInstance();
         long pollIntervalMs    = cfg.getLong("poll.interval.ms", Constants.DEFAULT_POLL_INTERVAL_MS);
 
-        System.out.println("[EmailMonitor] Started — polling every "
+        System.out.println("[EmailMonitor] Started - polling every "
             + (pollIntervalMs / 1000) + "s");
         LogDAO.info("EMAIL_MONITOR", "Email monitor started. Poll interval: "
             + (pollIntervalMs / 1000) + "s");
@@ -92,8 +93,8 @@ public class EmailMonitor implements Runnable {
                                 ? msgIdHeader[0].trim()
                                 : message.getSubject() + "_" + message.getSentDate();
 
-                        // SKIP if already processed
-                        if (isAlreadyProcessed(messageId)) {
+                        // SKIP if already processed OR if it's our own alert email
+                        if (isAlreadyProcessed(messageId) || isOwnAlertEmail(message)) {
                             continue;
                         }
 
@@ -189,7 +190,7 @@ public class EmailMonitor implements Runnable {
     private void processURL(String url, EmailParser.ParsedEmail email) {
         // 1. Check manual block list FIRST
         if (DBConnection.getInstance().isManuallyBlocked(url)) {
-            System.out.println("[ManualBlock] 🚫 BLOCKED (manual): " + url);
+            System.out.println("[ManualBlock] BLOCKED (manual): " + url);
             RiskScorer scorer = new RiskScorer(url, email.senderEmail, email.subject);
             scorer.finalScore = 1.0;
             scorer.decision = "HIGH_RISK";
@@ -199,8 +200,8 @@ public class EmailMonitor implements Runnable {
             com.phishguard.websocket.NotificationServer.getInstance().sendThreatAlert(url, email.senderEmail, scorer.finalScore, scorer.decision);
 
             new Thread(() -> com.phishguard.utils.EmailAlerter.sendAlert(
-                "🚨 PhishGuard: HIGH RISK URL Detected!",
-                "⚠️ A HIGH RISK phishing URL was detected!\n\n" +
+                "PhishGuard: HIGH RISK URL Detected!",
+                "A HIGH RISK phishing URL was detected!\n\n" +
                 "URL: " + url + "\n" +
                 "Sender: " + email.senderEmail + "\n" +
                 "Risk Score: " + String.format("%.4f", scorer.finalScore) + "\n" +
@@ -240,8 +241,8 @@ public class EmailMonitor implements Runnable {
                 if ("HIGH_RISK".equals(scorer.decision)) {
                     com.phishguard.websocket.NotificationServer.getInstance().sendThreatAlert(url, email.senderEmail, scorer.finalScore, scorer.decision);
                     new Thread(() -> com.phishguard.utils.EmailAlerter.sendAlert(
-                        "🚨 PhishGuard: HIGH RISK URL Detected!",
-                        "⚠️ A HIGH RISK phishing URL was detected!\n\n" +
+                        "PhishGuard: HIGH RISK URL Detected!",
+                        "A HIGH RISK phishing URL was detected!\n\n" +
                         "URL: " + url + "\n" +
                         "Sender: " + email.senderEmail + "\n" +
                         "Risk Score: " + String.format("%.4f", scorer.finalScore) + "\n" +
@@ -367,5 +368,11 @@ public class EmailMonitor implements Runnable {
         } catch (Exception e) {
             System.err.println("[EmailMonitor] Could not mark email as processed: " + e.getMessage());
         }
+    }
+
+    private boolean isOwnAlertEmail(Message message) throws MessagingException {
+        String subject = message.getSubject();
+        if (subject == null) return false;
+        return subject.startsWith("PhishGuard:");
     }
 }

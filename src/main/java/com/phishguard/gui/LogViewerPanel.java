@@ -45,7 +45,7 @@ public class LogViewerPanel extends JPanel {
         JPanel bar = new JPanel(new BorderLayout());
         bar.setOpaque(false);
 
-        JLabel title = new JLabel("📋 Incident Log");
+        JLabel title = new JLabel("Incident Log");
         title.setFont(new Font("Segoe UI", Font.BOLD, 18));
         title.setForeground(UITheme.ACCENT_CYAN);
         bar.add(title, BorderLayout.WEST);
@@ -68,11 +68,11 @@ public class LogViewerPanel extends JPanel {
         filterCombo.addActionListener(e -> applyFilter());
         rightGroup.add(filterCombo);
 
-        JButton refreshBtn = createOutlineBtn("🔄 Refresh");
+        JButton refreshBtn = createOutlineBtn("Refresh");
         refreshBtn.addActionListener(e -> loadData());
         rightGroup.add(refreshBtn);
 
-        JButton exportBtn = new JButton("📄 Export PDF Report") {
+        JButton exportBtn = new JButton("Export PDF Report") {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g;
@@ -296,11 +296,11 @@ public class LogViewerPanel extends JPanel {
                     File temp = get();
                     Files.copy(temp.toPath(), finalTarget.toPath(), StandardCopyOption.REPLACE_EXISTING);
                     JOptionPane.showMessageDialog(LogViewerPanel.this,
-                        "✓ PDF report saved to:\n" + finalTarget.getAbsolutePath(),
+                        "PDF report saved to:\n" + finalTarget.getAbsolutePath(),
                         "Export Successful", JOptionPane.INFORMATION_MESSAGE);
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(LogViewerPanel.this,
-                        "✗ Export failed: " + ex.getMessage(),
+                        "Export failed: " + ex.getMessage(),
                         "Export Error", JOptionPane.ERROR_MESSAGE);
                 }
             }

@@ -139,7 +139,7 @@ public final class AlertDialog {
         leftScore.add(scrLbl);
         leftScore.add(miniBar);
         
-        JLabel actionLbl = new JLabel(isHighRisk ? "Domain quarantined ✓" : "Flagged for review ⚠️");
+        JLabel actionLbl = new JLabel(isHighRisk ? "Domain quarantined" : "Flagged for review");
         actionLbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
         actionLbl.setForeground(themeColor);
         

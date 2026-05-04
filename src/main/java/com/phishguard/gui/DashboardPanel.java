@@ -47,10 +47,10 @@ public class DashboardPanel extends JPanel {
         bar.setOpaque(false);
         bar.setPreferredSize(new Dimension(0, 130));
 
-        cardTotal   = new StatCard("Emails Scanned", UITheme.ACCENT_CYAN, "📧", false);
-        cardThreats = new StatCard("Threats Found",  UITheme.WARN_ORANGE, "⚠️", false);
-        cardBlocked = new StatCard("URLs Blocked",   UITheme.DANGER_RED,  "🚫", false);
-        cardAvg     = new StatCard("Avg Risk Score", UITheme.SAFE_GREEN,  "📊", true);
+        cardTotal   = new StatCard("Emails Scanned", UITheme.ACCENT_CYAN, "", false);
+        cardThreats = new StatCard("Threats Found",  UITheme.WARN_ORANGE, "", false);
+        cardBlocked = new StatCard("URLs Blocked",   UITheme.DANGER_RED,  "", false);
+        cardAvg     = new StatCard("Avg Risk Score", UITheme.SAFE_GREEN,  "", true);
 
         bar.add(cardTotal);
         bar.add(cardThreats);
@@ -250,7 +250,7 @@ public class DashboardPanel extends JPanel {
         panel.setOpaque(false);
         panel.setPreferredSize(new Dimension(0, 220));
 
-        JLabel heading = new JLabel("⚡ Recent Threats");
+        JLabel heading = new JLabel("Recent Threats");
         heading.setFont(new Font("Segoe UI", Font.BOLD, 14));
         heading.setForeground(UITheme.ACCENT_CYAN);
         panel.add(heading, BorderLayout.NORTH);

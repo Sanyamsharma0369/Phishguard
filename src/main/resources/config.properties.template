@@ -1,4 +1,4 @@
-# Gmail IMAP Settings — fill in your credentials
+# Gmail IMAP Settings - fill in your credentials
 email.host=imap.gmail.com
 email.port=993
 email.ssl=true
